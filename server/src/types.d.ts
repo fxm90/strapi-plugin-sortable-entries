@@ -11,4 +11,5 @@ export type ContentTypeUID = UID.ContentType;
 export type DocumentID = Data.DocumentID;
 export type DocumentIDList = DocumentID[];
 
+export type Filters = JSONObject;
 export type Locale = string;

@@ -1,7 +1,8 @@
 {
   "sortable-entries.title": "Sort entries",
-  "sortable-entries.emptyState.failure": "Failed to fetch data, please try again!",
+  "sortable-entries.emptyState.failure": "Failed to fetch data! Please try again.",
   "sortable-entries.emptyState.noContent": "You don't have any content yet…",
   "sortable-entries.cancelButton.title": "Cancel",
-  "sortable-entries.submitButton.title": "Submit"
+  "sortable-entries.submitButton.title": "Submit",
+  "sortable-entries.notification.failure": "Failed to submit data! Please reopen the modal and try again."
 }

@@ -1,9 +1,11 @@
+import { reorderSubsetInPlace } from '../utils/reorderSubsetInPlace';
+
 //
 // Types
 //
 
 import type { Core } from '@strapi/strapi';
-import type { ContentTypeUID, DocumentID, DocumentIDList, Locale } from 'src/types';
+import type { ContentTypeUID, DocumentID, DocumentIDList, Filters, Locale } from 'src/types';
 
 //
 // Service
@@ -14,8 +16,9 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    * Retrieves all entries for a given content type, sorted by the given `sortOrderField`.
    *
    * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
-   * @param sortOrderField - The database field by which to sort the entries in ascending order.
-   * @param mainField - The main display field of each entry, used for UI listing.
+   * @param sortOrderField - The database field used to define the order of entries.
+   * @param mainField - The name of the field to display as the primary label in UI listings.
+   * @param filters - The filtering criteria to apply / `undefined` if all entries should be returned.
    * @param locale - The current locale of the content type / `undefined` if localization is turned off.
    *
    * @returns A promise resolving to an array of entries,
@@ -25,16 +28,19 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     uid,
     sortOrderField,
     mainField,
+    filters,
     locale,
   }: {
     uid: ContentTypeUID;
     sortOrderField: string;
     mainField: string;
+    filters: Filters | undefined;
     locale: Locale | undefined;
   }) {
     return await strapi.documents(uid).findMany({
       fields: ['documentId', mainField],
       sort: sortOrderField,
+      filters,
       locale,
     });
   },
@@ -46,6 +52,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
    * @param sortOrderField - The database field used to define the order of entries.
    * @param sortedDocumentIds - An ordered array of document IDs representing the new sequence of entries.
+   * @param filters - The filtering criteria applied when fetching the entries / `undefined` if all entries were returned.
    * @param locale - The current locale of the content type / `undefined` if localization is turned off.
    *
    * @returns A promise that resolves when all entries have been updated with their new sort order.
@@ -54,23 +61,40 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     uid,
     sortOrderField,
     sortedDocumentIds,
+    filters,
     locale,
   }: {
     uid: ContentTypeUID;
     sortOrderField: string;
     sortedDocumentIds: DocumentIDList;
+    filters: Filters | undefined;
     locale: Locale | undefined;
   }) {
-    // Map the list of document id's to promises,
-    // that reflect updating the corresponding database entry.
-    const updatePromises = sortedDocumentIds.map(async (documentId: DocumentID, index: number) =>
-      strapi.documents(uid).update({
-        documentId,
+    let mutableSortedDocumentIds = [...sortedDocumentIds];
+    if (!!filters) {
+      // We have an applied filter, so the `sortedDocumentIds` are only a subset of all entries.
+      // As the values of `sortOrderField` should be unique, we still need to update all entries and therefore fetch them here.
+      const allSortedEntries = await strapi.documents(uid).findMany({
+        fields: ['documentId'],
+        sort: sortOrderField,
         locale,
-        data: {
-          [sortOrderField]: index,
-        },
-      })
+      });
+
+      const allSortedDocumentsIds = allSortedEntries.map((entry) => entry.documentId);
+      mutableSortedDocumentIds = reorderSubsetInPlace(allSortedDocumentsIds, sortedDocumentIds);
+    }
+
+    // Map the list of sorted document ID's to promises,
+    // that reflect updating the corresponding database entry.
+    const updatePromises = mutableSortedDocumentIds.map(
+      async (documentId: DocumentID, index: number) =>
+        strapi.documents(uid).update({
+          documentId,
+          locale,
+          data: {
+            [sortOrderField]: index,
+          },
+        })
     );
 
     return await Promise.all(updatePromises);
