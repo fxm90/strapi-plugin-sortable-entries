@@ -4,7 +4,7 @@
 
 import type { Core } from '@strapi/strapi';
 import type { Context } from 'koa';
-import type { ContentTypeUID, DocumentIDList, Locale } from 'src/types';
+import type { ContentTypeUID, DocumentIDList, Filters, Locale } from 'src/types';
 
 /** The URL path parameters for the fetch entries request. */
 interface FetchEntriesParams {
@@ -15,7 +15,8 @@ interface FetchEntriesParams {
 interface FetchEntriesQuery {
   sortOrderField?: string;
   mainField?: string;
-  locale?: Locale | undefined;
+  filters?: Filters;
+  locale?: Locale;
 }
 
 /** The URL path parameters for the update sort order request. */
@@ -28,7 +29,8 @@ interface UpdateSortOrderBody {
   data: {
     sortOrderField?: string;
     sortedDocumentIds?: DocumentIDList;
-    locale?: Locale | undefined;
+    filters?: Filters;
+    locale?: Locale;
   };
 }
 
@@ -45,7 +47,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const { uid } = ctx.params as FetchEntriesParams;
 
     const query = ctx.request.query as FetchEntriesQuery;
-    const { sortOrderField, mainField, locale } = query;
+    const { sortOrderField, mainField, filters, locale } = query;
 
     if (!sortOrderField) {
       ctx.badRequest('Missing required `sortOrderField` query parameter.');
@@ -58,12 +60,16 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     }
 
     const service = strapi.plugin('sortable-entries').service('service');
-    return await service.fetchEntries({
+    const entries = await service.fetchEntries({
       uid,
       sortOrderField,
       mainField,
+      filters,
       locale,
     });
+
+    // Minify response.
+    ctx.response.body = JSON.stringify(entries);
   },
 
   /**
@@ -74,7 +80,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const { uid } = ctx.params as UpdateSortOrderParams;
 
     const { data } = ctx.request.body as UpdateSortOrderBody;
-    const { sortOrderField, sortedDocumentIds, locale } = data;
+    const { sortOrderField, sortedDocumentIds, filters, locale } = data;
 
     if (!sortOrderField) {
       ctx.badRequest('Missing required `sortOrderField` in request body.');
@@ -91,6 +97,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       uid,
       sortOrderField,
       sortedDocumentIds,
+      filters,
       locale,
     });
 

@@ -1,9 +1,9 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { useEffect, useState } from 'react';
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { useSearchParams } from 'react-router-dom';
 
-import { useFetchClient, useQueryParams } from '@strapi/strapi/admin';
+import { useFetchClient, useNotification, useQueryParams } from '@strapi/strapi/admin';
 import { Button, IconButton, Modal } from '@strapi/design-system';
 import { Drag } from '@strapi/icons';
 
@@ -59,16 +59,20 @@ const SortModal = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const { toggleNotification } = useNotification();
+  const { formatMessage } = useIntl();
+  const translate = (key: string): string => formatMessage({ id: prefixKey(key) });
 
   const fetchClient = useFetchClient();
   const [entriesFetchState, setEntriesFetchState] = useState<EntriesFetchState>({
     status: FetchStatus.Initial,
   });
 
-  const initialParams = { plugins: { i18n: { locale: undefined } } };
+  const initialParams = { filters: undefined, plugins: { i18n: { locale: undefined } } };
   const [queryParams, _] = useQueryParams(initialParams);
+  const filters = queryParams.query.filters;
   const locale = queryParams.query.plugins.i18n.locale;
 
   /**
@@ -81,7 +85,7 @@ const SortModal = ({
       const { data: entries } = await fetchClient.get<Entries>(
         config.fetchEntriesRequest.path(uid),
         {
-          params: { sortOrderField, mainField, locale },
+          params: { sortOrderField, mainField, filters, locale },
         }
       );
 
@@ -89,6 +93,8 @@ const SortModal = ({
     } catch (error) {
       console.error(`Failed to fetch data: ${error}`);
 
+      // This will show a corresponding error message in the modal.
+      // We therefore don't need to trigger an extra notification here.
       setEntriesFetchState({ status: FetchStatus.Failed });
     }
   };
@@ -139,6 +145,7 @@ const SortModal = ({
         data: {
           sortOrderField,
           sortedDocumentIds,
+          filters,
           locale,
         },
       });
@@ -155,6 +162,10 @@ const SortModal = ({
       setSearchParams(searchParams);
     } catch (error) {
       console.error(`Failed to submit data: ${error}`);
+
+      // We failed to submit the data.
+      // This can e.g. happen when the entries of a filtered modal are outdated.
+      toggleNotification({ type: 'danger', message: translate('notification.failure') });
     } finally {
       setIsSubmitting(false);
     }
