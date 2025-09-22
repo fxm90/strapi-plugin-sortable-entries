@@ -13,7 +13,6 @@ interface FetchEntriesParams {
 
 /** The query parameters for the fetch entries request. */
 interface FetchEntriesQuery {
-  sortOrderField?: string;
   mainField?: string;
   filters?: Filters;
   locale?: Locale;
@@ -27,7 +26,6 @@ interface UpdateSortOrderParams {
 /** The request body for the update sort order request. */
 interface UpdateSortOrderBody {
   data: {
-    sortOrderField?: string;
     sortedDocumentIds?: DocumentIDList;
     filters?: Filters;
     locale?: Locale;
@@ -47,12 +45,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const { uid } = ctx.params as FetchEntriesParams;
 
     const query = ctx.request.query as FetchEntriesQuery;
-    const { sortOrderField, mainField, filters, locale } = query;
-
-    if (!sortOrderField) {
-      ctx.badRequest('Missing required `sortOrderField` query parameter.');
-      return;
-    }
+    const { mainField, filters, locale } = query;
 
     if (!mainField) {
       ctx.badRequest('Missing required `mainField` query parameter.');
@@ -62,7 +55,6 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const service = strapi.plugin('sortable-entries').service('service');
     const entries = await service.fetchEntries({
       uid,
-      sortOrderField,
       mainField,
       filters,
       locale,
@@ -80,12 +72,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const { uid } = ctx.params as UpdateSortOrderParams;
 
     const { data } = ctx.request.body as UpdateSortOrderBody;
-    const { sortOrderField, sortedDocumentIds, filters, locale } = data;
-
-    if (!sortOrderField) {
-      ctx.badRequest('Missing required `sortOrderField` in request body.');
-      return;
-    }
+    const { sortedDocumentIds, filters, locale } = data;
 
     if (!sortedDocumentIds) {
       ctx.badRequest('Missing required `sortedDocumentIds` in request body.');
@@ -95,7 +82,6 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     const service = strapi.plugin('sortable-entries').service('service');
     await service.updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,

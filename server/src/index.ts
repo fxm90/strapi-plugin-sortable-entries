@@ -8,7 +8,10 @@ import register from './register';
 /**
  * Plugin server methods
  */
-import config from './config';
+
+// We explicitly need to append `/index` here to load the plugin configuration and
+// not our static configuration (which is not merged with the user configuration).
+import config from './config/index';
 import contentTypes from './content-types';
 import controllers from './controllers';
 import middlewares from './middlewares';

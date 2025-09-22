@@ -45,16 +45,13 @@ const config = {
  * presents them in a sortable list, and enables saving changes via a submit button.
  *
  * @param uid - The unique identifier of the content type which entries are sorted.
- * @param sortOrderField - The database field containing the order of the sorted entries.
  * @param mainField - The displayed field of each entry in the collection type.
  */
 const SortModal = ({
   uid,
-  sortOrderField,
   mainField,
 }: {
   uid: UID.ContentType;
-  sortOrderField: string;
   mainField: string;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -85,7 +82,7 @@ const SortModal = ({
       const { data: entries } = await fetchClient.get<Entries>(
         config.fetchEntriesRequest.path(uid),
         {
-          params: { sortOrderField, mainField, filters, locale },
+          params: { mainField, filters, locale },
         }
       );
 
@@ -143,7 +140,6 @@ const SortModal = ({
 
       await fetchClient.post(config.updateSortOrderRequest.path(uid), {
         data: {
-          sortOrderField,
           sortedDocumentIds,
           filters,
           locale,
