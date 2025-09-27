@@ -73,7 +73,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     // Fetch previous sort order of all entries to detect an actual change in position
     // when updating the entries below and to handle any active filters.
     const prevSortedEntries = await strapi.documents(uid).findMany({
-      fields: ['documentId'],
+      fields: ['documentId', sortOrderField],
       sort: sortOrderField,
       locale,
     });
@@ -103,10 +103,26 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       .map((documentId: DocumentID, index: number) => {
         // At this point `prevSortedDocumentIds` and `nextSortedDocumentIds` are guaranteed to have the same length.
         // Therefore we can safely access the value at the same index.
-        const prevDocumentIdAtIndex = prevSortedDocumentIds[index];
+        const prevEntry = prevSortedEntries[index];
 
-        if (prevDocumentIdAtIndex === documentId) {
-          // The position of this document is unchanged, no need to update the sort order field.
+        // To avoid unnecessary re-publishing of all entries when a new sort order is applied,
+        // we only update entries when strictly necessary. An update occurs if one of these conditions is met:
+        //
+        // 1. The entry has moved to a new position in the list.
+        //    - Example: If an entry with `documentId = "doc-5"` was at index 5 but now appears at index 3, its sort index must be updated.
+        //
+        // 2. The entry has never had a valid `sortOrderField` value.
+        //    - Example: A newly created entry where `sortOrderField` is `null`, `undefined` or an empty string.
+        //      → Needs an initial sort index assigned.
+        //
+        // 3. The entry’s stored `sortOrderField` is outdated due to earlier changes.
+        //    - Example: If an item was at index 4 with `sortOrderField = 4`, but another entry above it was deleted, its correct index is now 3.
+        //      → Its stored value is stale and must be fixed.
+        //
+        // If none of these conditions apply we can skip the update.
+        const hasSameDocumentId = prevEntry.documentId === documentId;
+        const hasSameSortIndex = prevEntry[sortOrderField] === index;
+        if (hasSameDocumentId && hasSameSortIndex) {
           return null;
         }
 
