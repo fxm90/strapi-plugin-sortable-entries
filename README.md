@@ -51,6 +51,8 @@ Then restart the app to apply the changes.
 
 5. Click **Submit** to save the new order. The modal will close and the list will refresh to reflect the changes.
 
+**Note:** When adding new entries, you may leave the `sortOrder` field blank or even hide it in the Admin Panel. The plugin will automatically assign a value that places the new entry at the end of the list.
+
 ### 3. Use in the Frontend
 
 To retrieve entries in the specific order from the frontend, you can make a GET request to the Strapi API. In the example below, we're querying a content type called `products`, ordered by the `sortOrder` field in ascending order:
