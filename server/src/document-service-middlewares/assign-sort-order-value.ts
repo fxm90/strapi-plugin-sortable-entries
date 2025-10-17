@@ -33,7 +33,7 @@ const hasSortOrderField = (input: any): input is SortableDocumentInput =>
 /**
  * A middleware that automatically assigns a value to the configured sort order field when creating a new entry.
  *
- * - Note: Exporting the middleware callback directly makes testing easier, but this property should only be used in tests!
+ * - Note: Exporting the middleware callback directly simplifies testing. However, this export is intended solely for use in tests.
  *         For registering the middleware in the actual application, please use the default export below.
  */
 export const assignSortOrderValueMiddlewareCallback: Modules.Documents.Middleware.Middleware =
