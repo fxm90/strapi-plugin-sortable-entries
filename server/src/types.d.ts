@@ -1,4 +1,4 @@
-import type { UID, Data } from '@strapi/strapi';
+import type { UID, Data, Modules } from '@strapi/strapi';
 
 //
 // Shared types for the server part.
@@ -11,5 +11,7 @@ export type ContentTypeUID = UID.ContentType;
 export type DocumentID = Data.DocumentID;
 export type DocumentIDList = DocumentID[];
 
-export type Filters = JSONObject;
+export type AnyDocument = Modules.Documents.AnyDocument;
+
+export type Filters = any;
 export type Locale = string;

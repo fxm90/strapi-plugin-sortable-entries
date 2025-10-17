@@ -70,32 +70,71 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     filters: Filters | undefined;
     locale: Locale | undefined;
   }) {
-    let mutableSortedDocumentIds = [...sortedDocumentIds];
-    if (!!filters) {
-      // We have an applied filter, so the `sortedDocumentIds` are only a subset of all entries.
-      // As the values of `sortOrderField` should be unique, we still need to update all entries and therefore fetch them here.
-      const allSortedEntries = await strapi.documents(uid).findMany({
-        fields: ['documentId'],
-        sort: sortOrderField,
-        locale,
-      });
+    // Fetch previous sort order of all entries to detect an actual change in position
+    // when updating the entries below and to handle any active filters.
+    const prevSortedEntries = await strapi.documents(uid).findMany({
+      fields: ['documentId', sortOrderField],
+      sort: sortOrderField,
+      locale,
+    });
 
-      const allSortedDocumentsIds = allSortedEntries.map((entry) => entry.documentId);
-      mutableSortedDocumentIds = reorderSubsetInPlace(allSortedDocumentsIds, sortedDocumentIds);
+    // The previous sorted list of document ID's.
+    const prevSortedDocumentIds = prevSortedEntries.map((entry) => entry.documentId);
+
+    // The new sorted list of document ID's, defined by the frontend.
+    let nextSortedDocumentIds = [...sortedDocumentIds];
+
+    if (!!filters) {
+      // We have an applied filter, so the given `sortedDocumentIds` are only a subset of all entries.
+      // As the values of `sortOrderField` needs to be unique, we still need to update all entries.
+      nextSortedDocumentIds = reorderSubsetInPlace(prevSortedDocumentIds, sortedDocumentIds);
     }
 
-    // Map the list of sorted document ID's to promises,
-    // that reflect updating the corresponding database entry.
-    const updatePromises = mutableSortedDocumentIds.map(
-      async (documentId: DocumentID, index: number) =>
-        strapi.documents(uid).update({
+    // Validate input before updating any entries.
+    // - When having no applied filter, we need to ensure the length of the given `sortedDocumentIds` matches the
+    //   length of `prevSortedDocumentIds`. Otherwise the data from the frontend is outdated.
+    // - When having an applied filter, we need to ensure `reorderSubsetInPlace()` returned all passed document ID's.
+    if (prevSortedDocumentIds.length !== nextSortedDocumentIds.length) {
+      throw new Error(`Expected to have the same number of document ID's as previously fetched.`);
+    }
+
+    // Map the new sorted list of document ID's to promises that reflect updating the corresponding database entries.
+    const updatePromises = nextSortedDocumentIds
+      .map((documentId: DocumentID, index: number) => {
+        // At this point `prevSortedDocumentIds` and `nextSortedDocumentIds` are guaranteed to have the same length.
+        // Therefore we can safely access the value at the same index.
+        const prevEntry = prevSortedEntries[index];
+
+        // To avoid unnecessary re-publishing of all entries when a new sort order is applied,
+        // we only update entries when strictly necessary. An update occurs if one of these conditions is met:
+        //
+        // 1. The entry has moved to a new position in the list.
+        //    - Example: If an entry with `documentId = "doc-5"` was at index 5 but now appears at index 3, its sort index must be updated.
+        //
+        // 2. The entry has never had a valid `sortOrderField` value.
+        //    - Example: A newly created entry where `sortOrderField` is `null`, `undefined` or an empty string.
+        //      → Needs an initial sort index assigned.
+        //
+        // 3. The entry’s stored `sortOrderField` is outdated due to earlier changes.
+        //    - Example: If an item was at index 4 with `sortOrderField = 4`, but another entry above it was deleted, its correct index is now 3.
+        //      → Its stored value is stale and must be fixed.
+        //
+        // If none of these conditions apply we can skip the update.
+        const hasSameDocumentId = prevEntry.documentId === documentId;
+        const hasSameSortIndex = prevEntry[sortOrderField] === index;
+        if (hasSameDocumentId && hasSameSortIndex) {
+          return null;
+        }
+
+        return strapi.documents(uid).update({
           documentId,
           locale,
           data: {
             [sortOrderField]: index,
           },
-        })
-    );
+        });
+      })
+      .filter((optionalPromise) => !!optionalPromise);
 
     return await Promise.all(updatePromises);
   },

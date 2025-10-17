@@ -1,6 +1,10 @@
 import { expect, describe, it } from 'vitest';
 import { reorderSubsetInPlace } from './reorderSubsetInPlace';
 
+//
+// Tests
+//
+
 describe(`test method "reorderSubsetInPlace()"`, () => {
   it('should handle an empty `array` parameter.', () => {
     // Given
