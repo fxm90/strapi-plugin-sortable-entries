@@ -1,16 +1,8 @@
 // https://docs.strapi.io/dev-docs/migration/v4-to-v5/additional-resources/helper-plugin#usecmeditviewdatamanager
 import { unstable_useContentManagerContext as useContentManagerContext } from '@strapi/strapi/admin';
 
+import { config } from '../../config';
 import SortModal from '../SortModal';
-
-//
-// Config
-//
-
-const config = {
-  /** The database field containing the order of the sorted entries. */
-  sortOrderField: 'sortOrder',
-};
 
 //
 // Components
@@ -40,7 +32,7 @@ const SortModalContainer = () => {
   const { uid } = contentType;
   const { mainField } = layout.list.settings;
 
-  return <SortModal uid={uid} mainField={mainField} sortOrderField={config.sortOrderField} />;
+  return <SortModal uid={uid} mainField={mainField} />;
 };
 
 export default SortModalContainer;

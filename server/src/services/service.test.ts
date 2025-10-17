@@ -52,6 +52,9 @@ const mockStrapi = {
 //
 // Tests
 //
+// - Note: These tests assume a configuration where `sortOrderField` is set to `sortOrder`.
+//         If you are using a different field name, you need to adjust the tests accordingly.
+//
 
 describe(`test method "fetchEntries()"`, () => {
   beforeEach(() => {
@@ -65,7 +68,6 @@ describe(`test method "fetchEntries()"`, () => {
   it('should invoke `strapi.documents(uid).findMany()`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const mainField = 'name';
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -73,7 +75,6 @@ describe(`test method "fetchEntries()"`, () => {
     // When
     await service({ strapi: mockStrapi }).fetchEntries({
       uid,
-      sortOrderField,
       mainField,
       filters,
       locale,
@@ -86,7 +87,7 @@ describe(`test method "fetchEntries()"`, () => {
     expect(mockFindMany).toHaveBeenCalled();
     expect(mockFindMany).toHaveBeenCalledWith({
       fields: ['documentId', mainField],
-      sort: sortOrderField,
+      sort: 'sortOrder:asc',
       filters,
       locale,
     });
@@ -101,7 +102,6 @@ describe(`test method "fetchEntries()"`, () => {
     ];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const mainField = 'name';
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -109,7 +109,6 @@ describe(`test method "fetchEntries()"`, () => {
     // When
     const result = await service({ strapi: mockStrapi }).fetchEntries({
       uid,
-      sortOrderField,
       mainField,
       filters,
       locale,
@@ -141,7 +140,6 @@ describe(`test method "updateSortOrder()"`, () => {
   it('should invoke `strapi.documents(uid).findMany()`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -149,7 +147,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -161,8 +158,8 @@ describe(`test method "updateSortOrder()"`, () => {
 
     expect(mockFindMany).toHaveBeenCalled();
     expect(mockFindMany).toHaveBeenCalledWith({
-      fields: ['documentId', sortOrderField],
-      sort: sortOrderField,
+      fields: ['documentId', 'sortOrder'],
+      sort: 'sortOrder:asc',
       locale,
     });
   });
@@ -170,7 +167,6 @@ describe(`test method "updateSortOrder()"`, () => {
   it('should not invoke `reorderSubsetInPlace()` when filter is undefined.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -178,7 +174,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -191,7 +186,6 @@ describe(`test method "updateSortOrder()"`, () => {
   it('should throw an error when `sortedDocumentIds` has a different length than the previously fetched document IDs and filter is undefined.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = [
       'doc-⚡️',
       'doc-5',
@@ -207,7 +201,6 @@ describe(`test method "updateSortOrder()"`, () => {
     await expect(() =>
       service({ strapi: mockStrapi }).updateSortOrder({
         uid,
-        sortOrderField,
         sortedDocumentIds,
         filters,
         locale,
@@ -220,7 +213,6 @@ describe(`test method "updateSortOrder()"`, () => {
   it('should invoke `strapi.documents(uid).update()` for all changed `sortedDocumentIds` when filter is undefined.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -228,7 +220,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -243,7 +234,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-5',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -251,7 +242,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-4',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -261,7 +252,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-3',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -269,7 +260,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -277,7 +268,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -294,7 +285,6 @@ describe(`test method "updateSortOrder()"`, () => {
     ];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -302,7 +292,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -319,7 +308,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-5',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -327,7 +316,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-4',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -339,7 +328,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-3',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -347,7 +336,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -355,7 +344,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -373,7 +362,6 @@ describe(`test method "updateSortOrder()"`, () => {
     ];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-13', 'doc-12', 'doc-11', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -381,7 +369,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -398,7 +385,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-13',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -406,7 +393,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-12',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -418,7 +405,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-11',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -426,7 +413,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -434,7 +421,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -444,7 +431,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedReorderSubsetInPlaceResult = ['doc-1', 'doc-4', 'doc-3', 'doc-2', 'doc-5'];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-4', 'doc-3', 'doc-2'];
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -452,7 +438,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -470,7 +455,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedReorderSubsetInPlaceResult = ['doc-⚡️', 'doc-1', 'doc-4', 'doc-3', 'doc-2', 'doc-5'];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-4', 'doc-3', 'doc-2'];
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -479,7 +463,6 @@ describe(`test method "updateSortOrder()"`, () => {
     await expect(() =>
       service({ strapi: mockStrapi }).updateSortOrder({
         uid,
-        sortOrderField,
         sortedDocumentIds,
         filters,
         locale,
@@ -494,7 +477,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedReorderSubsetInPlaceResult = ['doc-1', 'doc-4', 'doc-3', 'doc-2', 'doc-5'];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-4', 'doc-3', 'doc-2'];
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -502,7 +484,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -517,7 +498,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -527,7 +508,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-4',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -535,7 +516,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-3',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -543,7 +524,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -551,7 +532,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-5',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -570,7 +551,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedReorderSubsetInPlaceResult = ['doc-1', 'doc-4', 'doc-3', 'doc-2', 'doc-5'];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-4', 'doc-3', 'doc-2'];
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -578,7 +558,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -595,7 +574,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -603,7 +582,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-4',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -615,7 +594,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-3',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -623,7 +602,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -631,7 +610,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-5',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -651,7 +630,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedReorderSubsetInPlaceResult = ['doc-1', 'doc-12', 'doc-11', 'doc-2', 'doc-13'];
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-12', 'doc-11', 'doc-2'];
     const filters: Filters = { field: 'value' };
     const locale: Locale = 'en';
@@ -659,7 +637,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,
@@ -676,7 +653,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-1',
       locale,
       data: {
-        [sortOrderField]: 0,
+        sortOrder: 0,
       },
     });
 
@@ -684,7 +661,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-12',
       locale,
       data: {
-        [sortOrderField]: 1,
+        sortOrder: 1,
       },
     });
 
@@ -696,7 +673,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-11',
       locale,
       data: {
-        [sortOrderField]: 2,
+        sortOrder: 2,
       },
     });
 
@@ -704,7 +681,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-2',
       locale,
       data: {
-        [sortOrderField]: 3,
+        sortOrder: 3,
       },
     });
 
@@ -712,7 +689,7 @@ describe(`test method "updateSortOrder()"`, () => {
       documentId: 'doc-13',
       locale,
       data: {
-        [sortOrderField]: 4,
+        sortOrder: 4,
       },
     });
   });
@@ -722,7 +699,6 @@ describe(`test method "updateSortOrder()"`, () => {
     stubbedUpdateResult = { id: 0, documentId: 'doc-0', sortOrder: 0 };
 
     const uid: ContentTypeUID = 'api::test.test';
-    const sortOrderField = 'sortOrder';
     const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
     const filters: Filters = undefined;
     const locale: Locale = 'en';
@@ -730,7 +706,6 @@ describe(`test method "updateSortOrder()"`, () => {
     // When
     const result = await service({ strapi: mockStrapi }).updateSortOrder({
       uid,
-      sortOrderField,
       sortedDocumentIds,
       filters,
       locale,

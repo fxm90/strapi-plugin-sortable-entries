@@ -1,3 +1,4 @@
+import { config } from '../config';
 import { reorderSubsetInPlace } from '../utils/reorderSubsetInPlace';
 
 //
@@ -16,7 +17,6 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    * Retrieves all entries for a given content type, sorted by the given `sortOrderField`.
    *
    * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
-   * @param sortOrderField - The database field used to define the order of entries.
    * @param mainField - The name of the field to display as the primary label in UI listings.
    * @param filters - The filtering criteria to apply / `undefined` if all entries should be returned.
    * @param locale - The current locale of the content type / `undefined` if localization is turned off.
@@ -26,21 +26,36 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    */
   async fetchEntries({
     uid,
-    sortOrderField,
     mainField,
     filters,
     locale,
   }: {
     uid: ContentTypeUID;
-    sortOrderField: string;
     mainField: string;
     filters: Filters | undefined;
     locale: Locale | undefined;
   }) {
     return await strapi.documents(uid).findMany({
       fields: ['documentId', mainField],
-      sort: sortOrderField,
+      sort: `${config.sortOrderField}:asc`,
       filters,
+      locale,
+    });
+  },
+
+  /**
+   * Fetches the entry with the highest value in the configured sort order field for a given content type.
+   * This is typically used to retrieve the "last" entry according to the custom ordering field.
+   *
+   * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
+   * @param locale - The current locale of the content type / `undefined` if localization is turned off.
+   *
+   * @returns A promise resolving to the last entry object or `null` if no entry exists.
+   */
+  async fetchLastEntry({ uid, locale }: { uid: ContentTypeUID; locale: Locale | undefined }) {
+    return await strapi.documents(uid).findFirst({
+      fields: ['documentId', config.sortOrderField],
+      sort: `${config.sortOrderField}:desc`,
       locale,
     });
   },
@@ -50,7 +65,6 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    * based on the provided list of document IDs.
    *
    * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
-   * @param sortOrderField - The database field used to define the order of entries.
    * @param sortedDocumentIds - An ordered array of document IDs representing the new sequence of entries.
    * @param filters - The filtering criteria applied when fetching the entries / `undefined` if all entries were returned.
    * @param locale - The current locale of the content type / `undefined` if localization is turned off.
@@ -59,13 +73,11 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    */
   async updateSortOrder({
     uid,
-    sortOrderField,
     sortedDocumentIds,
     filters,
     locale,
   }: {
     uid: ContentTypeUID;
-    sortOrderField: string;
     sortedDocumentIds: DocumentIDList;
     filters: Filters | undefined;
     locale: Locale | undefined;
@@ -73,8 +85,8 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     // Fetch previous sort order of all entries to detect an actual change in position
     // when updating the entries below and to handle any active filters.
     const prevSortedEntries = await strapi.documents(uid).findMany({
-      fields: ['documentId', sortOrderField],
-      sort: sortOrderField,
+      fields: ['documentId', config.sortOrderField],
+      sort: `${config.sortOrderField}:asc`,
       locale,
     });
 
@@ -121,7 +133,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
         //
         // If none of these conditions apply we can skip the update.
         const hasSameDocumentId = prevEntry.documentId === documentId;
-        const hasSameSortIndex = prevEntry[sortOrderField] === index;
+        const hasSameSortIndex = prevEntry[config.sortOrderField] === index;
         if (hasSameDocumentId && hasSameSortIndex) {
           return null;
         }
@@ -130,7 +142,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
           documentId,
           locale,
           data: {
-            [sortOrderField]: index,
+            [config.sortOrderField]: index,
           },
         });
       })
