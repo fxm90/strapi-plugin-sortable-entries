@@ -44,12 +44,12 @@ const SortModalBody = ({
       return <Loader />;
 
     case FetchStatus.Failed:
-      return <EmptyStateLayout content={translate('emptyState.failure')} />;
+      return <EmptyStateLayout content={translate('empty-state.failure')} />;
 
     case FetchStatus.Resolved:
       const entries = entriesFetchState.value;
       if (entries.length === 0) {
-        return <EmptyStateLayout content={translate('emptyState.noContent')} />;
+        return <EmptyStateLayout content={translate('empty-state.noContent')} />;
       }
 
       // Converts the data-models into view-models for the `<SortableList />` component.

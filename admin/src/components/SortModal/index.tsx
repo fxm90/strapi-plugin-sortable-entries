@@ -47,13 +47,7 @@ const config = {
  * @param uid - The unique identifier of the content type which entries are sorted.
  * @param mainField - The displayed field of each entry in the collection type.
  */
-const SortModal = ({
-  uid,
-  mainField,
-}: {
-  uid: UID.ContentType;
-  mainField: string;
-}) => {
+const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -194,7 +188,7 @@ const SortModal = ({
         <Modal.Footer>
           <Modal.Close>
             <Button variant="tertiary">
-              <FormattedMessage id={prefixKey('cancelButton.title')} />
+              <FormattedMessage id={prefixKey('cancel-button.title')} />
             </Button>
           </Modal.Close>
           <Button
@@ -203,7 +197,7 @@ const SortModal = ({
             disabled={isSubmitButtonDisabled}
             loading={isSubmitButtonLoading}
           >
-            <FormattedMessage id={prefixKey('submitButton.title')} />
+            <FormattedMessage id={prefixKey('submit-button.title')} />
           </Button>
         </Modal.Footer>
       </Modal.Content>
