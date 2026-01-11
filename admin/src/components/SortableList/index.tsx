@@ -44,7 +44,7 @@ interface Theme {
  *
  * - See also: https://github.com/strapi/design-system/blob/main/packages/design-system/src/components/Table/Table.tsx
  */
-const Container = styled.div<{ theme: Theme }>`
+const Container = styled.div`
   border: 1px solid ${({ theme }) => theme.colors.neutral150};
   border-radius: 4px;
 `;

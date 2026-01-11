@@ -30,7 +30,7 @@ interface Theme {
  *
  * - See also: https://github.com/strapi/design-system/blob/main/packages/design-system/src/components/Table/Table.tsx
  */
-const DividedListItem = styled.li<{ theme: Theme }>`
+const DividedListItem = styled.li`
   border-top: 1px solid ${({ theme }) => theme.colors.neutral150};
   background: ${({ theme }) => theme.colors.neutral0};
 `;
