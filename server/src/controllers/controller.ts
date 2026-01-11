@@ -43,9 +43,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
    */
   async fetchEntries(ctx: Context) {
     const { uid } = ctx.params as FetchEntriesParams;
-
-    const query = ctx.request.query as FetchEntriesQuery;
-    const { mainField, filters, locale } = query;
+    const { mainField, filters, locale } = ctx.request.query as FetchEntriesQuery;
 
     if (!mainField) {
       ctx.badRequest('Missing required `mainField` query parameter.');
