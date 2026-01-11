@@ -104,8 +104,8 @@ const SortableList = ({
       >
         <SortableContext items={list} strategy={verticalListSortingStrategy} disabled={disabled}>
           <SortableListItemLayout>
-            <Drag fill="neutral400" />
-            <Typography variant="sigma" textColor="neutral400">
+            <Drag fill="neutral600" />
+            <Typography variant="sigma" textColor="neutral600">
               {heading}
             </Typography>
           </SortableListItemLayout>
