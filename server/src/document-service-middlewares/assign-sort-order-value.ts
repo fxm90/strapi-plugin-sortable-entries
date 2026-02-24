@@ -64,7 +64,7 @@ export const assignSortOrderValueMiddlewareCallback: Modules.Documents.Middlewar
         break;
 
       case DocumentAction.Delete:
-        // We explicitly skip updating any sort order field(s) up-on deleting an entry,
+        // We explicitly skip updating any sort order field(s) upon deleting an entry,
         // as the user would need to re-publish all above entries after deleting one.
         break;
 

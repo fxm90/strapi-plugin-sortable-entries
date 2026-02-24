@@ -161,7 +161,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     expect(mockFetchLastEntry).toBeCalledWith({ uid: context.uid, locale });
   });
 
-  it('should should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns `undefined`.', async () => {
+  it('should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns `undefined`.', async () => {
     // Given
     const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
@@ -186,7 +186,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     expect(context.params.data.sortOrder).toBe(0);
   });
 
-  it('should should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns an entry with `null` as the sort order value.', async () => {
+  it('should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns an entry with `null` as the sort order value.', async () => {
     // Given
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: null };
 
@@ -213,7 +213,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     expect(context.params.data.sortOrder).toBe(0);
   });
 
-  it('should should set `context.params.data.sortOrder` to last entries sort order plus one when `fetchLastEntry()` returns an entry with a valid sort order value.', async () => {
+  it('should set `context.params.data.sortOrder` to last entries sort order plus one when `fetchLastEntry()` returns an entry with a valid sort order value.', async () => {
     // Given
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: 1 };
 

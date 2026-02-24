@@ -589,7 +589,7 @@ describe(`test method "updateSortOrder()"`, () => {
     // We set-up `stubbedFindManyResult` in a way, that the document ID's are increasing from `doc-1` to `doc-5`,
     // where the property `sortOrder` starting from `doc-3` is falsey.
     // For the given `stubbedReorderSubsetInPlaceResult` we switched the position of `doc-2` and `doc-4`, so `doc-3` stays at the same sort order.
-    // But as the previous value was `null`, the entry should to be updated.
+    // But as the previous value was `null`, the entry should be updated.
     expect(mockUpdate).toHaveBeenNthCalledWith(2, {
       documentId: 'doc-3',
       locale,
@@ -668,7 +668,7 @@ describe(`test method "updateSortOrder()"`, () => {
     // We set-up `stubbedFindManyResult` in a way, that the document ID's are increasing from `doc-1` to `doc-13`,
     // where the property `sortOrder` starting from `doc-11` is outdated.
     // For the given `stubbedReorderSubsetInPlaceResult` we switched the position of `doc-2` and `doc-12`, so `doc-11` stays at the same sort order.
-    // But as the previous value was outdated, the entry should to be updated.
+    // But as the previous value was outdated, the entry should be updated.
     expect(mockUpdate).toHaveBeenNthCalledWith(2, {
       documentId: 'doc-11',
       locale,
