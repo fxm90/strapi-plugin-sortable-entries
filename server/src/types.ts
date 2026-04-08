@@ -13,5 +13,5 @@ export type DocumentIDList = DocumentID[];
 
 export type AnyDocument = Modules.Documents.AnyDocument;
 
-export type Filters = any;
-export type Locale = Modules.Documents.Params.Locale;
+export type Filters = Modules.Documents.Params.Filters.Any<ContentTypeUID>;
+export type Locale = Modules.Documents.Params.Locale.StringNotation;

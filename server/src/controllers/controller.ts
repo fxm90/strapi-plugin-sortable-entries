@@ -4,14 +4,21 @@
 
 import type { Core } from '@strapi/strapi';
 import type { Context } from 'koa';
-import type { ContentTypeUID, DocumentIDList, Filters, Locale } from 'src/types';
+import type { ContentTypeUID, DocumentIDList, Filters, Locale } from '../types';
 
 /** The URL path parameters for the fetch entries request. */
 interface FetchEntriesParams {
   uid: ContentTypeUID;
 }
 
-/** The query parameters for the fetch entries request. */
+/**
+ * The query parameters for the fetch entries request.
+ *
+ * `filters` is a complex object serialized into the query string using qs-style bracket notation,
+ * e.g. `filters[name][$eq]=foo` or `filters[$and][0][name][$eq]=foo`.
+ *
+ * Koa parses these back into a nested object automatically.
+ */
 interface FetchEntriesQuery {
   mainField?: string;
   filters?: Filters;
@@ -23,7 +30,14 @@ interface UpdateSortOrderParams {
   uid: ContentTypeUID;
 }
 
-/** The request body for the update sort order request. */
+/**
+ * The request body for the update sort order request.
+ *
+ * `filters` is a complex object serialized into the query string using qs-style bracket notation,
+ * e.g. `filters[name][$eq]=foo` or `filters[$and][0][name][$eq]=foo`.
+ *
+ * Koa parses these back into a nested object automatically.
+ */
 interface UpdateSortOrderBody {
   data: {
     sortedDocumentIds?: DocumentIDList;
@@ -58,8 +72,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       locale,
     });
 
-    // Minify response.
-    ctx.response.body = JSON.stringify(entries);
+    ctx.body = entries;
   },
 
   /**
@@ -77,6 +90,11 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
       return;
     }
 
+    if (!Array.isArray(sortedDocumentIds)) {
+      ctx.badRequest('Expected `sortedDocumentIds` to be an array.');
+      return;
+    }
+
     const service = strapi.plugin('sortable-entries').service('service');
     await service.updateSortOrder({
       uid,
@@ -86,7 +104,7 @@ const controller = ({ strapi }: { strapi: Core.Strapi }) => ({
     });
 
     // This will automatically set the `response.status` to 204 (HTTP No Content).
-    ctx.response.body = null;
+    ctx.body = null;
   },
 });
 

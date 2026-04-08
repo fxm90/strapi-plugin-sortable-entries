@@ -33,8 +33,6 @@ const mockStrapi = {
   },
 } as unknown as Core.Strapi;
 
-vi.stubGlobal('strapi', mockStrapi);
-
 //
 // Tests
 //
@@ -53,134 +51,159 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
 
   it('should invoke and return `next()` instead of `fetchLastEntry()` for a missing sort order field.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        // sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        // sortOrder: null,
+        // sortOrder: 0,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const result = await assignSortOrderValueMiddlewareCallback(context, next);
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(next).toBeCalled();
+    expect(next).toHaveBeenCalled();
     expect(result).toBe(stubbedNextResult);
 
-    expect(mockFetchLastEntry).not.toBeCalled();
+    expect(mockFetchLastEntry).not.toHaveBeenCalled();
   });
 
   it('should invoke and return `next()` instead of `fetchLastEntry()` for a valid sort order field of first index.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
         sortOrder: 0,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const result = await assignSortOrderValueMiddlewareCallback(context, next);
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(next).toBeCalled();
+    expect(next).toHaveBeenCalled();
     expect(result).toBe(stubbedNextResult);
 
-    expect(mockFetchLastEntry).not.toBeCalled();
+    expect(mockFetchLastEntry).not.toHaveBeenCalled();
   });
 
   it('should invoke and return `next()` instead of `fetchLastEntry()` for a valid sort order field of second index.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
         sortOrder: 1,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const result = await assignSortOrderValueMiddlewareCallback(context, next);
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(next).toBeCalled();
+    expect(next).toHaveBeenCalled();
     expect(result).toBe(stubbedNextResult);
 
-    expect(mockFetchLastEntry).not.toBeCalled();
+    expect(mockFetchLastEntry).not.toHaveBeenCalled();
   });
 
-  it('should invoke `fetchLastEntry()` for a sort order field of `null`.', async () => {
+  it('should invoke `fetchLastEntry()` for a sort order field of `undefined`.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const _ = await assignSortOrderValueMiddlewareCallback(context, next);
+    const _ = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(mockFetchLastEntry).toBeCalled();
-    expect(mockFetchLastEntry).toBeCalledWith({ uid: context.uid, locale });
+    expect(mockFetchLastEntry).toHaveBeenCalled();
+    expect(mockFetchLastEntry).toHaveBeenCalledWith({ uid: context.uid, locale });
   });
 
   it('should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns `undefined`.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const _ = await assignSortOrderValueMiddlewareCallback(context, next);
+    const _ = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
     expect(context.params.data.sortOrder).toBe(0);
@@ -190,24 +213,29 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     // Given
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: null };
 
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const _ = await assignSortOrderValueMiddlewareCallback(context, next);
+    const _ = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
     expect(context.params.data.sortOrder).toBe(0);
@@ -217,53 +245,63 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     // Given
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: 1 };
 
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const _ = await assignSortOrderValueMiddlewareCallback(context, next);
+    const _ = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
     const expectedSortOrder = stubbedFetchLastEntryResult.sortOrder + 1;
     expect(context.params.data.sortOrder).toBe(expectedSortOrder);
   });
 
-  it('should invoke and return `next()` for a sort order field of `null`.', async () => {
+  it('should invoke and return `next()`.', async () => {
     // Given
-    const action = DocumentAction.Create;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const result = await assignSortOrderValueMiddlewareCallback(context, next);
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(next).toBeCalled();
+    expect(next).toHaveBeenCalled();
     expect(result).toBe(stubbedNextResult);
   });
 });
@@ -279,29 +317,34 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "delete" action.'
 
   it('should invoke and return `next()` instead of `fetchLastEntry()`.', async () => {
     // Given
-    const action = DocumentAction.Delete;
     const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {
+      attributes: {
+        sortOrder: {},
+      },
+    };
+    const action = DocumentAction.Delete;
     const locale: Locale = 'en';
     const params = {
       data: {
-        locale,
-        sortOrder: null,
+        sortOrder: undefined,
       },
+      locale,
     };
 
-    const context = { uid, action, params };
+    const context = { uid, contentType, action, params };
 
     const stubbedNextResult = {};
     const next = vi.fn(() => stubbedNextResult);
 
     // When
     // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
-    const result = await assignSortOrderValueMiddlewareCallback(context, next);
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
 
     // Then
-    expect(next).toBeCalled();
+    expect(next).toHaveBeenCalled();
     expect(result).toBe(stubbedNextResult);
 
-    expect(mockFetchLastEntry).not.toBeCalled();
+    expect(mockFetchLastEntry).not.toHaveBeenCalled();
   });
 });
