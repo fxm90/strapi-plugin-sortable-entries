@@ -12,6 +12,7 @@ import SortableListItemLayout from '../SortableListItemLayout';
 // Types
 //
 
+import type { CSSProperties } from 'react';
 import type { UniqueIdentifier } from '../../types';
 
 // Fixes the error "Property `colors` does not exist on type `DefaultTheme`" on the style below.
@@ -50,13 +51,13 @@ const SortableListItem = ({ id, label }: { id: UniqueIdentifier; label: string }
 
   // Providing a dedicated type here fixes the error "Type `string` is not assignable to type `Position`".
   // https://stackoverflow.com/a/73946106
-  const style: React.CSSProperties = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition: transition,
+    transition,
     // Based on:
     // https://github.com/clauderic/dnd-kit/issues/1466
     position: isDragging ? 'relative' : 'inherit',
-    zIndex: isDragging ? 1000 : 0,
+    zIndex: isDragging ? 1000 : undefined,
   };
 
   return (

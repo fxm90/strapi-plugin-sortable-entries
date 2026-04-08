@@ -2,6 +2,8 @@ import { PLUGIN_ID } from './pluginId';
 import Initializer from './components/Initializer';
 import SortModalContainer from './components/SortModalContainer';
 
+import { type StrapiApp } from '@strapi/strapi/admin';
+
 /**
  * The view of the injection zone.
  *
@@ -23,7 +25,7 @@ const enum InjectionZoneLocation {
 }
 
 export default {
-  register(app: any) {
+  register(app: StrapiApp) {
     app.registerPlugin({
       id: PLUGIN_ID,
       initializer: Initializer,
@@ -32,7 +34,7 @@ export default {
     });
   },
 
-  bootstrap(app: any) {
+  bootstrap(app: StrapiApp) {
     app
       .getPlugin('content-manager')
       .injectComponent(InjectionZoneView.listView, InjectionZoneLocation.actions, {

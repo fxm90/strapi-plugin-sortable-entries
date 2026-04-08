@@ -1,11 +1,11 @@
 /**
- * Represents the status of an asynchronous fetch operation.
+ * Represents the status of an asynchronous operation.
  *
- * @see FetchState
+ * @see AsyncState
  */
-export enum FetchStatus {
+export enum AsyncStatus {
   Initial = 'initial',
-  Loading = 'loading',
-  Resolved = 'resolved',
+  InProgress = 'in-progress',
+  Success = 'success',
   Failed = 'failed',
 }
