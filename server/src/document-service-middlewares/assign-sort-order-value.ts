@@ -1,16 +1,17 @@
 import { config } from '../config';
 import { DocumentAction } from '../constants';
+import { hasFieldOfType } from '../utils/hasFieldOfType';
 
 //
 // Types
 //
 
-import type { Core, Modules } from '@strapi/strapi';
+import type { Core, Modules, Schema } from '@strapi/strapi';
 import type { AnyDocument } from '../types';
 
 /** Represents a sortable document from the database. */
 interface SortableDocument extends AnyDocument {
-  [config.sortOrderField]: number | null;
+  [config.sortOrderFieldName]: number | null;
 }
 
 //
@@ -31,15 +32,15 @@ export const assignSortOrderValueMiddlewareCallback =
   async (context, next) => {
     switch (context.action) {
       case DocumentAction.Create: {
-        const attributes = context.contentType?.attributes;
-        if (!attributes || !(config.sortOrderField in attributes)) {
+        const contentType = context.contentType as Schema.ContentType;
+        if (!hasFieldOfType(contentType, config.sortOrderFieldName, config.sortOrderFieldType)) {
           // The current content type does not have a sort order field, no need to auto-assign a new value.
           break;
         }
 
         const { data, locale } = context.params;
-        const sortOrder = data[config.sortOrderField];
-        if (sortOrder || sortOrder === 0) {
+        const sortOrder = data[config.sortOrderFieldName];
+        if (sortOrder !== null && sortOrder !== undefined) {
           // The user has already provided a valid value for the sort order field, no need to auto-assign a new value.
           break;
         }
@@ -49,10 +50,10 @@ export const assignSortOrderValueMiddlewareCallback =
           .service('plugin::sortable-entries.service')
           .fetchLastEntry({uid: context.uid, locale})) as SortableDocument | null;
 
-        const lastSortOrder = lastEntry?.[config.sortOrderField];
-        const nextSortOrder = lastSortOrder || lastSortOrder === 0 ? lastSortOrder + 1 : 0;
+        const lastSortOrder = lastEntry?.[config.sortOrderFieldName];
+        const nextSortOrder = typeof lastSortOrder === 'number' ? lastSortOrder + 1 : 0;
 
-        data[config.sortOrderField] = nextSortOrder;
+        data[config.sortOrderFieldName] = nextSortOrder;
         break;
       }
 

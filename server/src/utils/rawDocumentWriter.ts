@@ -37,10 +37,7 @@ export const rawDocumentWriter = ({
    *   surfacing content changes the editor has not yet intentionally published.
    *
    * - `strapi.db.query()` would trigger lifecycle hooks (e.g. `beforeUpdate`, `afterUpdate`),
-   *   which is undesirable for internal metadata updates.
-   *
-   * Object keys in `data` are automatically converted from camelCase to snake_case
-   * to match the database column naming convention.
+   *   which can also unexpectedly publish a draft.
    *
    * @throws If the content type has no collection name.
    */
@@ -64,7 +61,11 @@ export const rawDocumentWriter = ({
 
     const connection = trx ?? strapi.db.connection;
     const query = connection(tableName)
-      .update(mapKeysToSnakeCase(data))
+      .update(
+        // Convert object keys in `data` from camelCase to snake_case
+        // to match the database column naming convention.
+        mapKeysToSnakeCase(data)
+      )
       .where({ document_id: documentId });
 
     if (!locale) {

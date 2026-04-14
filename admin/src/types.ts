@@ -5,8 +5,8 @@ import type { AsyncStatus } from './constants';
 // Shared types for the sortable list.
 //
 
-export type UniqueIdentifier = number | string;
-export type DragEndEvent = (activeID: UniqueIdentifier, overID: UniqueIdentifier) => void;
+export type UniqueIdentifier = Data.DocumentID;
+export type DragEndEvent = (oldIndex: number, newIndex: number) => void;
 
 /** The view model for a single item in the sortable list component. */
 export interface SortableListItem {
@@ -24,7 +24,7 @@ export type SortableList = Array<SortableListItem>;
 /** A single entry in a collection type. */
 export interface Entry {
   documentId: Data.DocumentID;
-  [key: string]: unknown;
+  mainField: string | number | null;
 }
 
 /**

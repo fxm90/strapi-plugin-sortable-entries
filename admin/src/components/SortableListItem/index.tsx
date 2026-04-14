@@ -1,5 +1,5 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useSortable } from '@dnd-kit/react/sortable';
+import { RestrictToVerticalAxis } from '@dnd-kit/abstract/modifiers';
 
 import { Typography } from '@strapi/design-system';
 import { Drag } from '@strapi/icons';
@@ -12,15 +12,19 @@ import SortableListItemLayout from '../SortableListItemLayout';
 // Types
 //
 
-import type { CSSProperties } from 'react';
 import type { UniqueIdentifier } from '../../types';
 
-// Fixes the error "Property `colors` does not exist on type `DefaultTheme`" on the style below.
-interface Theme {
-  colors: {
-    [key: string]: string | number;
-  };
-}
+//
+// Config
+//
+
+const config = {
+  /** The modifiers to apply to the sortable item. */
+  modifiers: [RestrictToVerticalAxis],
+
+  /** The z-index to apply when the item is being dragged. */
+  zIndex: 1000,
+};
 
 //
 // Components
@@ -40,30 +44,30 @@ const DividedListItem = styled.li`
  * A single item in the sortable list.
  *
  * @param id - The unique identifier of the list item.
+ * @param index - The position of the list item in the list.
  * @param label - The title to show in the list item.
+ * @param disabled - Boolean flag whether sorting is disabled.
  */
-const SortableListItem = ({ id, label }: { id: UniqueIdentifier; label: string }) => {
-  // Based on:
-  // https://docs.dndkit.com/presets/sortable
-  const { attributes, isDragging, listeners, setNodeRef, transform, transition } = useSortable({
-    id,
-  });
-
-  // Providing a dedicated type here fixes the error "Type `string` is not assignable to type `Position`".
-  // https://stackoverflow.com/a/73946106
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    // Based on:
-    // https://github.com/clauderic/dnd-kit/issues/1466
-    position: isDragging ? 'relative' : 'inherit',
-    zIndex: isDragging ? 1000 : undefined,
-  };
+const SortableListItem = ({
+  id,
+  index,
+  label,
+  disabled,
+}: {
+  id: UniqueIdentifier;
+  index: number;
+  label: string;
+  disabled: boolean;
+}) => {
+  const sortable = useSortable({ id, index, disabled, modifiers: config.modifiers });
 
   return (
-    <DividedListItem ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <DividedListItem
+      ref={sortable.ref}
+      style={sortable.isDragging ? { position: 'relative', zIndex: config.zIndex } : undefined}
+    >
       <SortableListItemLayout>
-        <Drag />
+        <Drag style={{ cursor: 'grab' }} />
         <Typography variant="omega">{label}</Typography>
       </SortableListItemLayout>
     </DividedListItem>

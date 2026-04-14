@@ -10,6 +10,17 @@ import type { Core } from '@strapi/strapi';
 import type { AnyDocument, ContentTypeUID, Locale } from '../types';
 
 //
+// Mock "hasFieldOfType"
+//
+
+let stubbedHasFieldOfTypeResult: boolean;
+const mockHasFieldOfType = vi.hoisted(() => vi.fn(() => stubbedHasFieldOfTypeResult));
+
+vi.mock('../utils/hasFieldOfType', () => ({
+  hasFieldOfType: mockHasFieldOfType,
+}));
+
+//
 // Mock "Strapi"
 //
 
@@ -36,12 +47,13 @@ const mockStrapi = {
 //
 // Tests
 //
-// - Note: These tests assume a configuration where `sortOrderField` is set to `sortOrder`.
-//         If you are using a different field name, you need to adjust the tests accordingly.
+// - Note: These tests assume a configuration where `sortOrderFieldName` is set to `sortOrder` and that the `sortOrderFieldType` is set to `integer`.
+//         If you are using a different field name or type, you need to adjust the tests accordingly.
 //
 
 describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.', () => {
   beforeEach(() => {
+    stubbedHasFieldOfTypeResult = true;
     stubbedFetchLastEntryResult = undefined;
   });
 
@@ -49,19 +61,43 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     vi.clearAllMocks();
   });
 
-  it('should invoke and return `next()` instead of `fetchLastEntry()` for a missing sort order field.', async () => {
+  it('should invoke `hasFieldOfType()`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        // sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
       data: {
-        // sortOrder: 0,
+        sortOrder: 0,
+      },
+      locale,
+    };
+
+    const context = { uid, contentType, action, params };
+
+    const stubbedNextResult = {};
+    const next = vi.fn(() => stubbedNextResult);
+
+    // When
+    // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
+    const result = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
+
+    // Then
+    expect(mockHasFieldOfType).toHaveBeenCalledWith(contentType, 'sortOrder', 'integer');
+  });
+
+  it('should invoke and return `next()` instead of `fetchLastEntry()` when `hasFieldOfType()` returns `false`.', async () => {
+    // Given
+    stubbedHasFieldOfTypeResult = false;
+
+    const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {};
+    const action = DocumentAction.Create;
+    const locale: Locale = 'en';
+    const params = {
+      data: {
+        sortOrder: 0,
       },
       locale,
     };
@@ -85,11 +121,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
   it('should invoke and return `next()` instead of `fetchLastEntry()` for a valid sort order field of first index.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
@@ -118,11 +150,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
   it('should invoke and return `next()` instead of `fetchLastEntry()` for a valid sort order field of second index.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
@@ -148,14 +176,37 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     expect(mockFetchLastEntry).not.toHaveBeenCalled();
   });
 
+  it('should invoke `fetchLastEntry()` for a sort order field of `null`.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const contentType = {};
+    const action = DocumentAction.Create;
+    const locale: Locale = 'en';
+    const params = {
+      data: {
+        sortOrder: null,
+      },
+      locale,
+    };
+
+    const context = { uid, contentType, action, params };
+
+    const stubbedNextResult = {};
+    const next = vi.fn(() => stubbedNextResult);
+
+    // When
+    // @ts-expect-error: Our test setup provides only the minimal properties needed, not an entire context object.
+    const _ = await assignSortOrderValueMiddlewareCallback(mockStrapi)(context, next);
+
+    // Then
+    expect(mockFetchLastEntry).toHaveBeenCalled();
+    expect(mockFetchLastEntry).toHaveBeenCalledWith({ uid: context.uid, locale });
+  });
+
   it('should invoke `fetchLastEntry()` for a sort order field of `undefined`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
@@ -181,12 +232,10 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
 
   it('should set `context.params.data.sortOrder` to zero when `fetchLastEntry()` returns `undefined`.', async () => {
     // Given
+    stubbedFetchLastEntryResult = undefined;
+
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
@@ -214,11 +263,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: null };
 
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
@@ -246,11 +291,7 @@ describe('test `assignSortOrderValueMiddlewareCallback()` with "create" action.'
     stubbedFetchLastEntryResult = { id: 2, documentId: 'doc-2', sortOrder: 1 };
 
     const uid: ContentTypeUID = 'api::test.test';
-    const contentType = {
-      attributes: {
-        sortOrder: {},
-      },
-    };
+    const contentType = {};
     const action = DocumentAction.Create;
     const locale: Locale = 'en';
     const params = {
