@@ -64,14 +64,17 @@ export const useSubmitEntries = ({
 
       setSubmitEntriesState({ status: AsyncStatus.InProgress });
       try {
-        await fetchClient.post(config.updateSortOrderRequest.path(uid), {
-          data: {
-            sortedDocumentIds,
-            filters,
-            locale,
+        await fetchClient.post(
+          config.updateSortOrderRequest.path(uid),
+          {
+            data: {
+              sortedDocumentIds,
+              filters,
+              locale,
+            },
           },
-          signal,
-        });
+          { signal }
+        );
 
         setSubmitEntriesState({ status: AsyncStatus.Success });
       } catch (error) {
