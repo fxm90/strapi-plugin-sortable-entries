@@ -1,3 +1,10 @@
+import type { PolicyConfig } from '../policies/hasPermission';
+
+const hasPermission = (config: PolicyConfig) => ({
+  name: 'plugin::sortable-entries.hasPermission',
+  config,
+});
+
 export default {
   type: 'admin',
   routes: [
@@ -6,7 +13,12 @@ export default {
       path: '/fetch-entries/:uid',
       handler: 'controller.fetchEntries',
       config: {
-        policies: [],
+        policies: [
+          'admin::isAuthenticatedAdmin',
+          hasPermission({
+            actions: ['plugin::content-manager.explorer.read'],
+          }),
+        ],
       },
     },
     {
@@ -14,7 +26,12 @@ export default {
       path: '/update-sort-order/:uid',
       handler: 'controller.updateSortOrder',
       config: {
-        policies: [],
+        policies: [
+          'admin::isAuthenticatedAdmin',
+          hasPermission({
+            actions: ['plugin::content-manager.explorer.update'],
+          }),
+        ],
       },
     },
   ],
