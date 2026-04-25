@@ -1,5 +1,5 @@
 import type { Data } from '@strapi/strapi';
-import type { FetchStatus } from './constants';
+import type { AsyncStatus } from './constants';
 
 //
 // Shared types for the sortable list.
@@ -24,7 +24,7 @@ export type SortableList = Array<SortableListItem>;
 /** A single entry in a collection type. */
 export interface Entry {
   documentId: Data.DocumentID;
-  [key: string]: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -39,15 +39,25 @@ export type Entries = Array<Entry>;
 // Shared types for the modal component(s).
 //
 
-/**
- * Represents the full lifecycle of an asynchronous fetch operation.
- *
- * @template T The type of the data returned upon a successful fetch.
- */
-export type FetchState<T> =
-  | { status: FetchStatus.Initial }
-  | { status: FetchStatus.Loading }
-  | { status: FetchStatus.Resolved; value: T }
-  | { status: FetchStatus.Failed };
+/** Represents a successful result. */
+type SuccessResult<T> = T extends void
+  ? { status: AsyncStatus.Success }
+  : { status: AsyncStatus.Success; data: T };
 
-export type EntriesFetchState = FetchState<Entries>;
+/** Represents a failed result. */
+type ErrorResult = {
+  status: AsyncStatus.Failed;
+  error: unknown;
+};
+
+/**
+ * Describes the lifecycle state of an async operation.
+ */
+export type AsyncState<T = void> =
+  | { status: AsyncStatus.Initial }
+  | { status: AsyncStatus.InProgress }
+  | SuccessResult<T>
+  | ErrorResult;
+
+export type FetchEntriesState = AsyncState<Entries>;
+export type SubmitEntriesState = AsyncState<void>;

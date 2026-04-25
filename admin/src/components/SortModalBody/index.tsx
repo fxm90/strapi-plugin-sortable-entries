@@ -1,16 +1,15 @@
 import { EmptyStateLayout, Loader } from '@strapi/design-system';
 
-import { useIntl } from 'react-intl';
-
-import { FetchStatus } from '../../constants';
-import { prefixKey } from '../../utils/prefixKey';
+import { AsyncStatus } from '../../constants';
+import { useFormatters } from '../../hooks/useFormatters';
+import { assertNever } from '../../utils/assertNever';
 import SortableListComponent from '../SortableList';
 
 //
 // Types
 //
 
-import type { DragEndEvent, EntriesFetchState, SortableList } from 'src/types';
+import type { DragEndEvent, FetchEntriesState, SortableList } from '../../types';
 
 //
 // Components
@@ -19,35 +18,34 @@ import type { DragEndEvent, EntriesFetchState, SortableList } from 'src/types';
 /**
  * Returns different elements for the modal body, depending on the current fetch status.
  *
- * @param entriesFetchState - The state for fetching the entries.
+ * @param fetchEntriesState - The state for fetching the entries.
  * @param mainField - The displayed field of each entry in the collection type.
  * @param handleDragEnd - The event handler that is called on drag end.
  * @param disabled - Boolean flag whether sorting is disabled.
  */
 const SortModalBody = ({
-  entriesFetchState,
+  fetchEntriesState,
   mainField,
   handleDragEnd,
   disabled,
 }: {
-  entriesFetchState: EntriesFetchState;
+  fetchEntriesState: FetchEntriesState;
   mainField: string;
   handleDragEnd: DragEndEvent;
   disabled: boolean;
 }) => {
-  const { formatMessage } = useIntl();
-  const translate = (key: string): string => formatMessage({ id: prefixKey(key) });
+  const { translate } = useFormatters();
 
-  switch (entriesFetchState.status) {
-    case FetchStatus.Initial:
-    case FetchStatus.Loading:
+  switch (fetchEntriesState.status) {
+    case AsyncStatus.Initial:
+    case AsyncStatus.InProgress:
       return <Loader />;
 
-    case FetchStatus.Failed:
+    case AsyncStatus.Failed:
       return <EmptyStateLayout content={translate('empty-state.failure')} />;
 
-    case FetchStatus.Resolved:
-      const entries = entriesFetchState.value;
+    case AsyncStatus.Success: {
+      const entries = fetchEntriesState.data;
       if (entries.length === 0) {
         return <EmptyStateLayout content={translate('empty-state.noContent')} />;
       }
@@ -55,7 +53,10 @@ const SortModalBody = ({
       // Converts the data-models into view-models for the `<SortableList />` component.
       const sortableList: SortableList = entries.map((entry) => ({
         id: entry.documentId,
-        label: entry[mainField],
+        // Use `!= null` (loose equality) to guard against both `null` and `undefined`,
+        // since `entry[mainField]` is typed as `unknown` and could be either.
+        // `String(undefined)` would otherwise render as the literal string "undefined".
+        label: entry[mainField] != null ? String(entry[mainField]) : entry.documentId,
       }));
 
       return (
@@ -66,6 +67,10 @@ const SortModalBody = ({
           heading={mainField}
         />
       );
+    }
+
+    default:
+      return assertNever(fetchEntriesState);
   }
 };
 

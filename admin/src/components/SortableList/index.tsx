@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -26,7 +27,7 @@ import SortableListItemLayout from '../SortableListItemLayout';
 //
 
 import type { DragEndEvent as DNDKitDragEndEvent } from '@dnd-kit/core';
-import type { DragEndEvent, SortableList } from 'src/types';
+import type { DragEndEvent, SortableList } from '../../types';
 
 // Fixes the error "Property `colors` does not exist on type `DefaultTheme`" on the style below.
 interface Theme {
@@ -49,8 +50,8 @@ const Container = styled.div`
   border-radius: 4px;
 `;
 
-const FadeableList = styled.ul<{ disabled: boolean }>`
-  opacity: ${({ disabled }) => (disabled ? 0.4 : 1)};
+const FadeableList = styled.ul<{ $disabled: boolean }>`
+  opacity: ${({ $disabled }) => ($disabled ? 0.4 : 1)};
 `;
 
 /**
@@ -81,18 +82,27 @@ const SortableList = ({
     })
   );
 
-  const handleDragEnd = (event: DNDKitDragEndEvent) => {
-    const { active, over } = event;
-    if (!over) {
-      return;
-    }
+  /**
+   * The callback for the drag-end event.
+   *
+   * - Note: We wrap the function in `useCallback` to ensure a stable function identity across renders.
+   *         This prevents unnecessary re-renders or effect re-executions in components that depend on this function.
+   */
+  const handleDragEnd = useCallback(
+    (event: DNDKitDragEndEvent) => {
+      const { active, over } = event;
+      if (!over) {
+        return;
+      }
 
-    if (active.id === over.id) {
-      return;
-    }
+      if (active.id === over.id) {
+        return;
+      }
 
-    onDragEnd(active.id, over.id);
-  };
+      onDragEnd(active.id, over.id);
+    },
+    [onDragEnd]
+  );
 
   return (
     <Container>
@@ -109,7 +119,7 @@ const SortableList = ({
               {heading}
             </Typography>
           </SortableListItemLayout>
-          <FadeableList disabled={disabled}>
+          <FadeableList $disabled={disabled}>
             {list.map((listItem) => (
               <SortableListItem key={listItem.id} id={listItem.id} label={listItem.label} />
             ))}
