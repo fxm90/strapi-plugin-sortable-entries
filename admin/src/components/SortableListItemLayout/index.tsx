@@ -1,4 +1,4 @@
-import { Box, Flex } from '@strapi/design-system';
+import { Flex } from '@strapi/design-system';
 
 //
 // Types
@@ -15,9 +15,9 @@ import type { PropsWithChildren } from 'react';
  * It helps to ensure sortable list items have uniform spacing and layout alignment.
  */
 const SortableListItemLayout = ({ children }: PropsWithChildren) => (
-  <Box marginTop={4} marginBottom={4} marginRight={5} marginLeft={5}>
-    <Flex gap={4}>{children}</Flex>
-  </Box>
+  <Flex gap={4} marginTop={4} marginBottom={4} marginRight={5} marginLeft={5}>
+    {children}
+  </Flex>
 );
 
 export default SortableListItemLayout;

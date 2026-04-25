@@ -5,9 +5,32 @@ import service from './service';
 // Types
 //
 
-import type { Core } from '@strapi/strapi';
+import type { Core, Schema } from '@strapi/strapi';
 import type { AnyDocument, ContentTypeUID, Locale } from '../types';
-import type { ModelI18nOptions } from './service';
+
+//
+// Mock "hasFieldOfType"
+//
+
+let stubbedHasFieldOfTypeResult: boolean;
+const mockHasFieldOfType = vi.hoisted(() => vi.fn(() => stubbedHasFieldOfTypeResult));
+
+vi.mock('../utils/hasFieldOfType', () => ({
+  hasFieldOfType: mockHasFieldOfType,
+}));
+
+//
+// Mock "resolveEffectiveLocale"
+//
+
+let stubbedResolveEffectiveLocaleResult: Locale | undefined;
+const mockResolveEffectiveLocale = vi.hoisted(() =>
+  vi.fn(() => stubbedResolveEffectiveLocaleResult)
+);
+
+vi.mock('../utils/resolveEffectiveLocale', () => ({
+  resolveEffectiveLocale: mockResolveEffectiveLocale,
+}));
 
 //
 // Mock "Strapi"
@@ -24,7 +47,7 @@ const mockDocuments = vi.fn(() => {
 });
 
 // The result from a call to `strapi.getModel("api::XYZ.XYZ")`.
-let stubbedGetModelResult: ModelI18nOptions | undefined;
+let stubbedGetModelResult: Schema.ContentType | undefined;
 const mockGetModel = vi.fn(() => stubbedGetModelResult);
 
 const mockStrapi = {
@@ -41,13 +64,15 @@ const mockStrapi = {
 //
 // Tests
 //
-// - Note: These tests assume a configuration where `sortOrderField` is set to `sortOrder`.
-//         If you are using a different field name, you need to adjust the tests accordingly.
+// - Note: These tests assume a configuration where `sortOrderFieldName` is set to `sortOrder` and that the `sortOrderFieldType` is set to `integer`.
+//         If you are using a different field name or type, you need to adjust the tests accordingly.
 //
 
 describe(`test method "fetchLastEntry()"`, () => {
   beforeEach(() => {
-    stubbedGetModelResult = createModelWithLocalization(false);
+    stubbedHasFieldOfTypeResult = true;
+    stubbedGetModelResult = createModel();
+    stubbedResolveEffectiveLocaleResult = 'en';
     stubbedFindFirstResult = { id: 1, documentId: 'doc-1', sortOrder: 0 };
   });
 
@@ -58,7 +83,7 @@ describe(`test method "fetchLastEntry()"`, () => {
   it('should invoke `strapi.getModel(uid)`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const locale: Locale = 'en';
+    const locale: Locale = 'de';
 
     // When
     await service({ strapi: mockStrapi }).fetchLastEntry({
@@ -75,14 +100,49 @@ describe(`test method "fetchLastEntry()"`, () => {
     stubbedGetModelResult = undefined;
 
     const uid: ContentTypeUID = 'api::test.test';
-    const locale: Locale = 'en';
+    const locale: Locale = 'de';
 
     // When
-    await expect(() =>
-      service({ strapi: mockStrapi }).fetchLastEntry({
-        uid,
-        locale,
-      })
+    await expect(
+      async () =>
+        await service({ strapi: mockStrapi }).fetchLastEntry({
+          uid,
+          locale,
+        })
+    )
+      // Then
+      .rejects.toThrow();
+  });
+
+  it('should invoke `hasFieldOfType()` with correct parameters.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const locale: Locale = 'de';
+
+    // When
+    await service({ strapi: mockStrapi }).fetchLastEntry({
+      uid,
+      locale,
+    });
+
+    // Then
+    expect(mockHasFieldOfType).toHaveBeenCalledWith(stubbedGetModelResult, 'sortOrder', 'integer');
+  });
+
+  it('should throw an error when `hasFieldOfType()` returns false.', async () => {
+    // Given
+    stubbedHasFieldOfTypeResult = false;
+
+    const uid: ContentTypeUID = 'api::test.test';
+    const locale: Locale = 'de';
+
+    // When
+    await expect(
+      async () =>
+        await service({ strapi: mockStrapi }).fetchLastEntry({
+          uid,
+          locale,
+        })
     )
       // Then
       .rejects.toThrow();
@@ -91,7 +151,7 @@ describe(`test method "fetchLastEntry()"`, () => {
   it('should invoke `strapi.documents(uid)` with correct uid.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const locale: Locale = 'en';
+    const locale: Locale = 'de';
 
     // When
     await service({ strapi: mockStrapi }).fetchLastEntry({
@@ -103,35 +163,48 @@ describe(`test method "fetchLastEntry()"`, () => {
     expect(mockDocuments).toHaveBeenCalledWith(uid);
   });
 
-  it.each([{ isLocalized: true }, { isLocalized: false }])(
-    'should invoke `strapi.documents(uid).findOne()` with correct parameters (isLocalized: $isLocalized).',
-    async ({ isLocalized }) => {
-      // Given
-      stubbedGetModelResult = createModelWithLocalization(isLocalized);
+  it('should invoke `resolveEffectiveLocale()` with correct parameters.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const locale: Locale = 'de';
 
-      // Given
-      const uid: ContentTypeUID = 'api::test.test';
-      const locale: Locale = 'en';
+    // When
+    await service({ strapi: mockStrapi }).fetchLastEntry({
+      uid,
+      locale,
+    });
 
-      // When
-      await service({ strapi: mockStrapi }).fetchLastEntry({
-        uid,
-        locale,
-      });
+    // Then
+    expect(mockResolveEffectiveLocale).toHaveBeenCalledWith({
+      strapi: mockStrapi,
+      model: stubbedGetModelResult,
+      locale,
+    });
+  });
 
-      // Then
-      expect(mockFindFirst).toHaveBeenCalledWith({
-        fields: ['sortOrder'],
-        sort: 'sortOrder:desc',
-        locale: isLocalized ? locale : undefined,
-      });
-    }
-  );
+  it('should invoke `strapi.documents(uid).findFirst()` with correct parameters.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const locale: Locale = 'de';
+
+    // When
+    await service({ strapi: mockStrapi }).fetchLastEntry({
+      uid,
+      locale,
+    });
+
+    // Then
+    expect(mockFindFirst).toHaveBeenCalledWith({
+      fields: ['sortOrder'],
+      sort: 'sortOrder:desc',
+      locale: stubbedResolveEffectiveLocaleResult,
+    });
+  });
 
   it('should return result from `strapi.documents(uid).findFirst()`.', async () => {
     // Given
     const uid: ContentTypeUID = 'api::test.test';
-    const locale: Locale = 'en';
+    const locale: Locale = 'de';
 
     // When
     const result = await service({ strapi: mockStrapi }).fetchLastEntry({
@@ -148,11 +221,14 @@ describe(`test method "fetchLastEntry()"`, () => {
 // Helper
 //
 
-/** Creates a model with localization enabled or disabled. */
-const createModelWithLocalization = (localized: boolean): ModelI18nOptions => ({
-  pluginOptions: {
-    i18n: {
-      localized,
-    },
-  },
+const createModel = (): Schema.ContentType => ({
+  modelType: 'contentType',
+  modelName: 'test',
+  globalId: 'Test',
+  uid: 'api::test.test',
+  kind: 'collectionType',
+  info: { singularName: 'test', pluralName: 'tests', displayName: 'Test' },
+  options: {},
+  attributes: {},
+  pluginOptions: {},
 });

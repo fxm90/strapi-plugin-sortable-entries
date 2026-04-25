@@ -1,18 +1,18 @@
 import { expect, describe, it } from 'vitest';
-import { reorderSubsetInPlace } from './reorderSubsetInPlace';
+import { reorderSubset } from './reorderSubset';
 
 //
 // Tests
 //
 
-describe(`test method "reorderSubsetInPlace()"`, () => {
+describe(`test method "reorderSubset()"`, () => {
   it('should handle an empty `array` parameter.', () => {
     // Given
     const array = [];
     const newSubsetOrder = [];
 
     // When
-    const result = reorderSubsetInPlace(array, newSubsetOrder);
+    const result = reorderSubset(array, newSubsetOrder);
 
     // Then
     expect(result).toStrictEqual([]);
@@ -24,7 +24,7 @@ describe(`test method "reorderSubsetInPlace()"`, () => {
     const newSubsetOrder = [];
 
     // When
-    const result = reorderSubsetInPlace(array, newSubsetOrder);
+    const result = reorderSubset(array, newSubsetOrder);
 
     // Then
     expect(result).toStrictEqual(['a', 'b', 'c', 'd', 'e', 'f']);
@@ -36,7 +36,7 @@ describe(`test method "reorderSubsetInPlace()"`, () => {
     const newSubsetOrder = ['a', 'b', 'g'];
 
     // When
-    expect(() => reorderSubsetInPlace(array, newSubsetOrder))
+    expect(() => reorderSubset(array, newSubsetOrder))
       // Then
       .toThrowError();
   });
@@ -47,7 +47,7 @@ describe(`test method "reorderSubsetInPlace()"`, () => {
     const newSubsetOrder = ['c'];
 
     // When
-    const result = reorderSubsetInPlace(array, newSubsetOrder);
+    const result = reorderSubset(array, newSubsetOrder);
 
     // Then
     expect(result).toStrictEqual(['a', 'b', 'c', 'd', 'e', 'f']);
@@ -59,7 +59,7 @@ describe(`test method "reorderSubsetInPlace()"`, () => {
     const newSubsetOrder = ['e', 'a', 'c'];
 
     // When
-    const result = reorderSubsetInPlace(array, newSubsetOrder);
+    const result = reorderSubset(array, newSubsetOrder);
 
     // Then
     expect(result).toStrictEqual(['e', 'b', 'a', 'd', 'c', 'f']);

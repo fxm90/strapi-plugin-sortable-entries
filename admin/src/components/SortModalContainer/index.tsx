@@ -19,13 +19,13 @@ const SortModalContainer = () => {
   }
 
   const { attributes } = contentType;
-  if (!(config.sortOrderField in attributes)) {
+  if (!(config.sortOrderFieldName in attributes)) {
     return null;
   }
 
-  const sortOrderFieldAttributes = attributes[config.sortOrderField];
-  if (sortOrderFieldAttributes.type !== 'integer') {
-    console.warn(`${config.sortOrderField} needs to be of type integer.`);
+  const sortOrderFieldAttributes = attributes[config.sortOrderFieldName];
+  if (sortOrderFieldAttributes.type !== config.sortOrderFieldType) {
+    console.warn(`${config.sortOrderFieldName} needs to be of type ${config.sortOrderFieldType}.`);
     return null;
   }
 

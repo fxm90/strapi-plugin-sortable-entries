@@ -1,49 +1,32 @@
 import { config } from '../config';
+import { hasFieldOfType } from '../utils/hasFieldOfType';
+import { isEqualSets } from '../utils/isEqualSets';
 import { rawDocumentWriter } from '../utils/rawDocumentWriter';
-import { reorderSubsetInPlace } from '../utils/reorderSubsetInPlace';
+import { reorderSubset } from '../utils/reorderSubset';
+import { resolveEffectiveLocale } from '../utils/resolveEffectiveLocale';
 
 //
 // Types
 //
 
-import type { Core, Schema } from '@strapi/strapi';
+import type { Core } from '@strapi/strapi';
 import type { ContentTypeUID, DocumentID, DocumentIDList, Filters, Locale } from '../types';
-
-/**
- * Describes the configuration options for Strapi's i18n plugin.
- *
- * This represents the shape of the `i18n` object stored under `pluginOptions` for a content type.
- * It indicates whether localization is enabled.
- */
-export interface I18nPluginOptions {
-  localized?: boolean;
-}
-
-/**
- * Describes the subset of a Strapi content type model that includes plugin options,
- * specifically the i18n configuration injected at runtime.
- *
- * This mirrors the internal structure used by Strapi to attach plugin configuration to content type schemas.
- * It is not part of Strapi's public type surface.
- *
- * - Note: Exported for testing and type-guarding purposes only.
- */
-export interface ModelI18nOptions {
-  pluginOptions?: {
-    i18n?: I18nPluginOptions;
-  };
-}
 
 //
 // Service
 //
 
+/*
+ * The service for the sortable entries plugin, containing the core business logic for
+ * fetching and updating the sort order of entries.
+ *
+ *  - Note: Services validate business and domain invariants (e.g. content type existence, required fields, data consistency).
+ */
 const service = ({ strapi }: { strapi: Core.Strapi }) => ({
   /**
-   * Retrieves all entries for a given content type, sorted by the given `sortOrderField`.
+   * Retrieves all entries for a given content type, sorted by the given `sortOrderFieldName`.
    *
    * @param uid - The unique identifier of the content type (e.g. 'api::products.products').
-   * @param mainField - The name of the field to display as the primary label in UI listings.
    * @param filters - The filtering criteria to apply / `undefined` if all entries should be returned.
    * @param locale - The current locale of the content type / `undefined` if localization is turned off.
    *
@@ -52,12 +35,10 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
    */
   async fetchEntries({
     uid,
-    mainField,
     filters,
     locale,
   }: {
     uid: ContentTypeUID;
-    mainField: string;
     filters: Filters | undefined;
     locale: Locale | undefined;
   }) {
@@ -66,13 +47,35 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       throw new Error(`Content type "${uid}" not found.`);
     }
 
-    const effectiveLocale = resolveEffectiveLocale(model, locale);
-    return strapi.documents(uid).findMany({
-      fields: [mainField],
-      sort: `${config.sortOrderField}:asc`,
+    const { sortOrderFieldName, sortOrderFieldType } = config;
+    if (!hasFieldOfType(model, sortOrderFieldName, sortOrderFieldType)) {
+      throw new Error(
+        `Content type "${uid}" must define a "${sortOrderFieldName}" attribute of type "${sortOrderFieldType}".`
+      );
+    }
+
+    // Resolve the `mainField` — the field configured as the "Entry title" in the Content Manager's edit view settings
+    // (e.g. "title" for articles, "name" for categories).
+    // Used as the human-readable label for each entry in the sort modal.
+    //
+    // @see https://docs.strapi.io/cms/features/content-manager (Entry title configuration)
+    // @see https://github.com/strapi/strapi/blob/main/packages/core/content-manager/server/src/services/content-types.ts (findConfiguration)
+    const contentTypeService = strapi.plugin('content-manager').service('content-types');
+    const contentTypeConfig = await contentTypeService.findConfiguration(model);
+    const mainField = contentTypeConfig.settings?.mainField;
+
+    const effectiveLocale = await resolveEffectiveLocale({ strapi, model, locale });
+    const result = await strapi.documents(uid).findMany({
+      fields: mainField ? [mainField] : [],
+      sort: `${sortOrderFieldName}:asc`,
       filters,
       locale: effectiveLocale,
     });
+
+    return result.map((entry) => ({
+      documentId: entry.documentId,
+      mainField: mainField ? entry[mainField] : null,
+    }));
   },
 
   /**
@@ -90,10 +93,17 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       throw new Error(`Content type "${uid}" not found.`);
     }
 
-    const effectiveLocale = resolveEffectiveLocale(model, locale);
+    const { sortOrderFieldName, sortOrderFieldType } = config;
+    if (!hasFieldOfType(model, sortOrderFieldName, sortOrderFieldType)) {
+      throw new Error(
+        `Content type "${uid}" must define a "${sortOrderFieldName}" attribute of type "${sortOrderFieldType}".`
+      );
+    }
+
+    const effectiveLocale = await resolveEffectiveLocale({ strapi, model, locale });
     return strapi.documents(uid).findFirst({
-      fields: [config.sortOrderField],
-      sort: `${config.sortOrderField}:desc`,
+      fields: [sortOrderFieldName],
+      sort: `${sortOrderFieldName}:desc`,
       locale: effectiveLocale,
     });
   },
@@ -125,36 +135,61 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       throw new Error(`Content type "${uid}" not found.`);
     }
 
-    const effectiveLocale = resolveEffectiveLocale(model, locale);
+    const { sortOrderFieldName, sortOrderFieldType } = config;
+    if (!hasFieldOfType(model, sortOrderFieldName, sortOrderFieldType)) {
+      throw new Error(
+        `Content type "${uid}" must define a "${sortOrderFieldName}" attribute of type "${sortOrderFieldType}".`
+      );
+    }
 
-    // Fetch previous sort order of all entries to detect an actual change in position
-    // when updating the entries below and to handle any active filters.
+    // Validate the submitted document IDs before using them in either the filtered or unfiltered path.
+    const submittedDocumentIdSet = new Set(sortedDocumentIds);
+    if (submittedDocumentIdSet.size !== sortedDocumentIds.length) {
+      throw new Error('Expected submitted document IDs to be unique.');
+    }
+
+    // Fetch previous sort order of all entries to detect an actual change in position when updating the entries below and
+    // to provide the full ordering baseline for filtered reorders.
+    const effectiveLocale = await resolveEffectiveLocale({ strapi, model, locale });
     const prevSortedEntries = await strapi.documents(uid).findMany({
-      fields: [config.sortOrderField],
-      sort: `${config.sortOrderField}:asc`,
+      fields: [sortOrderFieldName],
+      sort: `${sortOrderFieldName}:asc`,
       locale: effectiveLocale,
     });
 
-    // The previous sorted list of document ID's.
+    // The previous sorted list of document IDs.
     const prevSortedDocumentIds = prevSortedEntries.map((entry) => entry.documentId);
 
-    // The new sorted list of document ID's, defined by the frontend.
+    // The new sorted list of document IDs, defined by the frontend.
     let nextSortedDocumentIds = [...sortedDocumentIds];
 
     if (filters) {
-      // We have an applied filter, so the given `sortedDocumentIds` are only a subset of all entries.
-      // As the values of `sortOrderField` needs to be unique, we still need to update all entries.
-      nextSortedDocumentIds = reorderSubsetInPlace(prevSortedDocumentIds, sortedDocumentIds);
-    }
+      // Re-fetch the currently visible subset and reject stale modal submissions before merging them back into the full list.
+      // Without this check, a stale filtered modal could silently reshuffle hidden entries.
+      const filteredEntries = await strapi.documents(uid).findMany({
+        fields: [sortOrderFieldName],
+        sort: `${sortOrderFieldName}:asc`,
+        filters,
+        locale: effectiveLocale,
+      });
 
-    // Validate input before updating any entries.
-    // - When having no applied filter, we need to ensure the length of the given `sortedDocumentIds` matches the
-    //   length of `prevSortedDocumentIds`. Otherwise the data from the frontend is outdated.
-    // - When having an applied filter, we need to ensure `reorderSubsetInPlace()` returned all passed document ID's.
-    if (prevSortedDocumentIds.length !== nextSortedDocumentIds.length) {
-      throw new Error(
-        `Expected ${prevSortedDocumentIds.length} document ID(s) but received ${nextSortedDocumentIds.length}.`
-      );
+      const filteredDocumentIds = filteredEntries.map((entry) => entry.documentId);
+      const filteredDocumentIdSet = new Set(filteredDocumentIds);
+
+      if (!isEqualSets(filteredDocumentIdSet, submittedDocumentIdSet)) {
+        throw new Error('Expected submitted document IDs to match the current filtered entries.');
+      }
+
+      // We have an applied filter, so the given `sortedDocumentIds` are only a subset of all entries.
+      // As the values of `sortOrderFieldName` needs to be unique, we still need to update all entries.
+      nextSortedDocumentIds = reorderSubset(prevSortedDocumentIds, sortedDocumentIds);
+    } else {
+      // Without a filter, the frontend submits the full list — it must match all entries currently in the database.
+      // A mismatch means entries were added or removed since the modal was opened.
+      const prevDocumentIdSet = new Set(prevSortedDocumentIds);
+      if (!isEqualSets(prevDocumentIdSet, submittedDocumentIdSet)) {
+        throw new Error('Expected submitted document IDs to match the current entries.');
+      }
     }
 
     // Determine which entries actually need a database update.
@@ -165,12 +200,12 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     // 1. The entry has moved to a new position in the list.
     //    - Example: If an entry with `documentId = "doc-5"` was at index 5 but now appears at index 3, its sort index must be updated.
     //
-    // 2. The entry has never had a valid `sortOrderField` value.
-    //    - Example: A newly created entry where `sortOrderField` is `null`, `undefined` or an empty string.
+    // 2. The entry has never had a valid `sortOrderFieldName` value.
+    //    - Example: A newly created entry where `sortOrderFieldName` is `null`, `undefined` or an empty string.
     //      → Needs an initial sort index assigned.
     //
-    // 3. The entry’s stored `sortOrderField` is outdated due to earlier changes.
-    //    - Example: If an item was at index 4 with `sortOrderField = 4`, but another entry above it was deleted, its correct index is now 3.
+    // 3. The entry’s stored `sortOrderFieldName` is outdated due to earlier changes.
+    //    - Example: If an item was at index 4 with `sortOrderFieldName = 4`, but another entry above it was deleted, its correct index is now 3.
     //      → Its stored value is stale and must be fixed.
     //
     // At this point `prevSortedDocumentIds` and `nextSortedDocumentIds` are guaranteed to have the same length,
@@ -179,7 +214,7 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
       .map((documentId: DocumentID, index: number) => {
         const prevEntry = prevSortedEntries[index];
         const hasSameDocumentId = prevEntry.documentId === documentId;
-        const hasSameSortIndex = prevEntry[config.sortOrderField] === index;
+        const hasSameSortIndex = prevEntry[sortOrderFieldName] === index;
         if (hasSameDocumentId && hasSameSortIndex) {
           return null;
         }
@@ -197,53 +232,33 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     //    Using `publish()` afterwards would publish the entire draft, potentially surfacing content changes the editor
     //    has not yet intentionally published.
     //
-    // 2. `sortOrder` is a plugin-managed metadata field, not user-authored content.
-    //    It has no business being in a draft state — its purpose is to reflect the current order of entries as configured by the editor.
+    // 2. Modifying the document using the Document Service API would further update the `updatedAt` / `updatedBy` values and
+    //    trigger lifecycle hooks, which is undesirable for an internal metadata update.
     //
-    // 3. We update all rows sharing the same `document_id` (both draft and published) in a single query,
+    // 3. `sortOrder` is a plugin-managed metadata field, not user-authored content.
+    //    It has no business being in a draft state — its purpose is to reflect the metadata of the live document,
+    //    regardless of any unpublished changes in the draft.
+    //
+    // 4. We update all rows sharing the same `document_id` (both draft and published) in a single query,
     //    keeping both versions in sync without any state transition.
     //
     // - Note: All updates are wrapped in a single database transaction so that a partial failure cannot leave
     //         the sort order in an inconsistent state across entries.
+    //
+    // - Note: The individual `UPDATE` statements are executed sequentially to avoid potential deadlocks
+    //         that can occur when concurrent writes within the same transaction lock rows in different orders.
     return await strapi.db.connection.transaction(async (trx) => {
       const documentWriter = rawDocumentWriter({ strapi, trx });
-      const updatePromises = entriesToUpdate.map(({ documentId, sortOrder }) =>
-        documentWriter.updateAllDocumentVersions({
+      for (const { documentId, sortOrder } of entriesToUpdate) {
+        await documentWriter.updateAllDocumentVersions({
           uid,
           documentId,
-          data: { [config.sortOrderField]: sortOrder },
+          data: { [sortOrderFieldName]: sortOrder },
           locale: effectiveLocale,
-        })
-      );
-      return await Promise.all(updatePromises);
+        });
+      }
     });
   },
 });
 
 export default service;
-
-//
-// Helper
-//
-
-/**
- * Resolves the effective locale to use for queries, returning `undefined` for non-localized content types.
- *
- * Strapi seems to add `plugins[i18n][locale]=<LAST-SELECTED-LOCALE>` to the URL, even for content types where localization is disabled.
- * Passing that locale value to a non-localized type causes problems:
- *
- * - The raw Knex writer fails to match any rows, because the `locale` column is stored as `NULL` for non-localized types.
- * - The Document Service API silently ignores it, but we strip it anyway to keep both callers consistent.
- *
- * @param model - The content type's model, potentially containing the i18n plugin options.
- * @param locale - The locale value injected by Strapi's i18n plugin / `undefined` if localization is turned off.
- *
- * @returns The locale for localized types, or `undefined` for non-localized types.
- */
-const resolveEffectiveLocale = (
-  model: Schema.ContentType & ModelI18nOptions,
-  locale: Locale | undefined
-): Locale | undefined => {
-  const isLocalized = model.pluginOptions?.i18n?.localized === true;
-  return isLocalized ? locale : undefined;
-};

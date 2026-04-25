@@ -1,18 +1,4 @@
-import { useCallback } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { DragDropProvider } from '@dnd-kit/react';
 
 import { Typography } from '@strapi/design-system';
 import { Drag } from '@strapi/icons';
@@ -26,15 +12,7 @@ import SortableListItemLayout from '../SortableListItemLayout';
 // Types
 //
 
-import type { DragEndEvent as DNDKitDragEndEvent } from '@dnd-kit/core';
 import type { DragEndEvent, SortableList } from '../../types';
-
-// Fixes the error "Property `colors` does not exist on type `DefaultTheme`" on the style below.
-interface Theme {
-  colors: {
-    [key: string]: string | number;
-  };
-}
 
 //
 // Components
@@ -73,59 +51,58 @@ const SortableList = ({
   disabled: boolean;
   heading: string;
 }) => {
-  // Based on:
-  // https://docs.dndkit.com/presets/sortable
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  /**
-   * The callback for the drag-end event.
-   *
-   * - Note: We wrap the function in `useCallback` to ensure a stable function identity across renders.
-   *         This prevents unnecessary re-renders or effect re-executions in components that depend on this function.
-   */
-  const handleDragEnd = useCallback(
-    (event: DNDKitDragEndEvent) => {
-      const { active, over } = event;
-      if (!over) {
-        return;
-      }
-
-      if (active.id === over.id) {
-        return;
-      }
-
-      onDragEnd(active.id, over.id);
-    },
-    [onDragEnd]
-  );
-
   return (
     <Container>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        modifiers={[restrictToVerticalAxis]}
-        onDragEnd={handleDragEnd}
+      <DragDropProvider
+        onDragEnd={({ canceled, operation }) => {
+          if (canceled || !operation) {
+            return;
+          }
+
+          // @ts-expect-error
+          //
+          // Implementation based on the official dnd-kit documentation:
+          // https://dndkit.com/react/guides/sortable-state-management/#single-list-without-the-move-helper
+          //
+          // However, these docs don't include the `sortable` property in the TypeScript types.
+          // The maintainer confirmed `source.sortable.initialIndex` / `source.sortable.index` as the correct API in:
+          // https://github.com/clauderic/dnd-kit/issues/1664
+          const { sortable } = operation.source;
+
+          // Unfortunately we can't import `isSortable` from '@dnd-kit/react/sortable', due to a runtime error in the Strapi admin panel.
+          // Therefore, we do a manual check to ensure this is a sortable event before accessing the sortable properties.
+          // https://dndkit.com/react/guides/sortable-state-management/#issortable
+          if (
+            !sortable ||
+            !('index' in sortable) ||
+            !(typeof sortable.index === 'number') ||
+            !('initialIndex' in sortable) ||
+            !(typeof sortable.initialIndex === 'number')
+          ) {
+            return;
+          }
+
+          onDragEnd(sortable.initialIndex, sortable.index);
+        }}
       >
-        <SortableContext items={list} strategy={verticalListSortingStrategy} disabled={disabled}>
-          <SortableListItemLayout>
-            <Drag fill="neutral600" />
-            <Typography variant="sigma" textColor="neutral600">
-              {heading}
-            </Typography>
-          </SortableListItemLayout>
-          <FadeableList $disabled={disabled}>
-            {list.map((listItem) => (
-              <SortableListItem key={listItem.id} id={listItem.id} label={listItem.label} />
-            ))}
-          </FadeableList>
-        </SortableContext>
-      </DndContext>
+        <SortableListItemLayout>
+          <Drag fill="neutral600" />
+          <Typography variant="sigma" textColor="neutral600">
+            {heading}
+          </Typography>
+        </SortableListItemLayout>
+        <FadeableList $disabled={disabled}>
+          {list.map((listItem, index) => (
+            <SortableListItem
+              key={listItem.id}
+              id={listItem.id}
+              index={index}
+              label={listItem.label}
+              disabled={disabled}
+            />
+          ))}
+        </FadeableList>
+      </DragDropProvider>
     </Container>
   );
 };

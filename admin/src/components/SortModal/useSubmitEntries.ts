@@ -46,6 +46,12 @@ export const useSubmitEntries = ({
     return () => abortControllerRef.current?.abort();
   }, []);
 
+  // Serialize filters to a stable string for use in the `useCallback` dependency array below.
+  //
+  // `useQueryParams` may return a new object reference for `filters` on every render even when the filter values are unchanged,
+  //  which would cause `submitEntries` to be recreated on every render and in turn cause `handleSubmit` to be recreated as well.
+  const filtersAsJSONString = JSON.stringify(filters);
+
   /**
    * Triggers the submit entries workflow for the given content type.
    *
@@ -67,11 +73,9 @@ export const useSubmitEntries = ({
         await fetchClient.post(
           config.updateSortOrderRequest.path(uid),
           {
-            data: {
-              sortedDocumentIds,
-              filters,
-              locale,
-            },
+            sortedDocumentIds,
+            filters,
+            locale,
           },
           { signal }
         );
@@ -89,7 +93,9 @@ export const useSubmitEntries = ({
     },
 
     // - Note: `fetchClient` is stable across renders.
-    [fetchClient, uid, filters, locale]
+    // - Note: `filtersAsJSONString` is used instead of `filters` to prevent recreating this callback when `useQueryParams` returns a new object reference
+    //          for an unchanged filter value. The closure still captures the original `filters` object which has the same value as `filtersAsJSONString`.
+    [fetchClient, uid, filtersAsJSONString, locale]
   );
 
   /**

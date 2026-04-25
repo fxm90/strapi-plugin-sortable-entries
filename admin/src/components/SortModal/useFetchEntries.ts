@@ -28,12 +28,10 @@ const config = {
 
 export const useFetchEntries = ({
   uid,
-  mainField,
   filters,
   locale,
 }: {
   uid: UID.ContentType;
-  mainField: string;
   filters: unknown;
   locale: string | undefined;
 }) => {
@@ -74,7 +72,7 @@ export const useFetchEntries = ({
       const { data: entries } = await fetchClient.get<Entries>(
         config.fetchEntriesRequest.path(uid),
         {
-          params: { mainField, filters, locale },
+          params: { filters, locale },
           signal,
         }
       );
@@ -93,7 +91,7 @@ export const useFetchEntries = ({
     // - Note: `fetchClient` is stable across renders.
     // - Note: `filtersAsJSONString` is used instead of `filters` to prevent recreating this callback when `useQueryParams` returns a new object reference
     //          for an unchanged filter value. The closure still captures the original `filters` object which has the same value as `filtersAsJSONString`.
-  }, [fetchClient, uid, mainField, filtersAsJSONString, locale]);
+  }, [fetchClient, uid, filtersAsJSONString, locale]);
 
   /**
    * Resets the entries fetch state to its initial value and aborts any in-flight request.

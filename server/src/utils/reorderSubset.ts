@@ -19,13 +19,13 @@
  * // 2 → 'a'
  * // 4 → 'c'
  *
- * const result = reorderSubsetInPlace(array, newSubsetOrder);
+ * const result = reorderSubset(array, newSubsetOrder);
  * console.log(result); // ['e', 'b', 'a', 'd', 'c', 'f']
  */
-export const reorderSubsetInPlace = <T>(array: T[], newSubsetOrder: T[]): T[] => {
+export const reorderSubset = <T>(array: T[], newSubsetOrder: T[]): T[] => {
   const subset = new Set(newSubsetOrder);
 
-  let positionsToUpdate: number[] = [];
+  const positionsToUpdate: number[] = [];
   array.forEach((element, index) => {
     // For performance reasons we query the set instead of the array here,
     // as this results in O(1) instead of O(n) lookup times.
@@ -39,7 +39,7 @@ export const reorderSubsetInPlace = <T>(array: T[], newSubsetOrder: T[]): T[] =>
   }
 
   // Replace the elements in order with values from `newSubsetOrder`.
-  let mutableArray = [...array];
+  const mutableArray = [...array];
   positionsToUpdate.forEach((positionToUpdate, index) => {
     mutableArray[positionToUpdate] = newSubsetOrder[index];
   });

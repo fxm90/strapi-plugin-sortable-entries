@@ -1,14 +1,14 @@
-import { arrayMove } from '@dnd-kit/sortable';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { useNotification, useQueryParams } from '@strapi/strapi/admin';
-import { Button, IconButton, Modal } from '@strapi/design-system';
+import { Button, EmptyStateLayout, IconButton, Loader, Modal } from '@strapi/design-system';
 import { Drag } from '@strapi/icons';
 
 import { AsyncStatus } from '../../constants';
 import { useFormatters } from '../../hooks/useFormatters';
-import SortModalBody from '../SortModalBody';
+import { assertNever } from '../../utils/assertNever';
+import SortableListComponent from '../SortableList';
 
 import { useFetchEntries } from './useFetchEntries';
 import { useSubmitEntries } from './useSubmitEntries';
@@ -18,11 +18,58 @@ import { useSubmitEntries } from './useSubmitEntries';
 //
 
 import type { UID } from '@strapi/strapi';
-import type { Entries, FetchEntriesState, DragEndEvent, UniqueIdentifier } from '../../types';
+import type { DragEndEvent, SortableList } from '../../types';
 
 //
 // Components
 //
+
+/**
+ * Renders the body of the modal based on the fetch state.
+ */
+const SortModalBody = ({
+  heading,
+  fetchStatus,
+  isEmpty,
+  sortableList,
+  onDragEnd,
+  isSubmitting,
+}: {
+  heading: string;
+  fetchStatus: AsyncStatus;
+  isEmpty: boolean;
+  sortableList: SortableList;
+  onDragEnd: DragEndEvent;
+  isSubmitting: boolean;
+}) => {
+  const { translate } = useFormatters();
+
+  switch (fetchStatus) {
+    case AsyncStatus.Initial:
+    case AsyncStatus.InProgress:
+      return <Loader />;
+
+    case AsyncStatus.Failed:
+      return <EmptyStateLayout content={translate('empty-state.failure')} />;
+
+    case AsyncStatus.Success:
+      if (isEmpty) {
+        return <EmptyStateLayout content={translate('empty-state.noContent')} />;
+      }
+
+      return (
+        <SortableListComponent
+          list={sortableList}
+          onDragEnd={onDragEnd}
+          disabled={isSubmitting}
+          heading={heading}
+        />
+      );
+
+    default:
+      return assertNever(fetchStatus);
+  }
+};
 
 /**
  * A modal component that retrieves entries from the current collection type,
@@ -44,13 +91,10 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
   });
 
   const filters = queryParams.query.filters;
-  const locale = queryParams.query.plugins.i18n.locale;
+  const locale = queryParams.query.plugins?.i18n?.locale;
 
-  /** The resolved entries are a mutable version of the fetched entries, which can be updated via drag-and-drop. */
-  const [resolvedEntries, setResolvedEntries] = useState<Entries>([]);
   const { fetchEntriesState, fetchEntries, resetFetchEntriesState } = useFetchEntries({
     uid,
-    mainField,
     filters,
     locale,
   });
@@ -59,6 +103,12 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
     filters,
     locale,
   });
+
+  /**
+   * Working copy of the fetched entries as `{ id, label }` view-models, updated by drag-and-drop reordering.
+   * Serves as the single source of truth for both rendering and submission.
+   */
+  const [sortableList, setSortableList] = useState<SortableList>([]);
 
   // Fetch the entries every time the modal is opened.
   useEffect(() => {
@@ -75,14 +125,21 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
     if (!isOpen) {
       resetFetchEntriesState();
       resetSubmitEntriesState();
-      setResolvedEntries([]);
+      setSortableList([]);
     }
   }, [isOpen, resetFetchEntriesState, resetSubmitEntriesState]);
 
-  // Sync the resolved entries with the fetched entries on success.
+  // Convert fetched entries to view-models and store them on success, keeping `fetchEntriesState.data` immutable after fetching.
   useEffect(() => {
     if (fetchEntriesState.status === AsyncStatus.Success) {
-      setResolvedEntries(fetchEntriesState.data);
+      const sortableList = fetchEntriesState.data.map((entry) => ({
+        id: entry.documentId,
+        // Use `!= null` (loose equality) to guard against both `null` and `undefined`,
+        // since `entry[mainField]` is typed as `unknown` and could be either.
+        // `String(undefined)` would otherwise render as the literal string "undefined".
+        label: entry.mainField != null ? String(entry.mainField) : entry.documentId,
+      }));
+      setSortableList(sortableList);
     }
   }, [fetchEntriesState]);
 
@@ -96,8 +153,9 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
       //
       // - See also: https://stackoverflow.com/a/71466484
       //
-      // - Note: The functional update form of `setSearchParams` is used intentionally here to avoid adding `searchParams` to the dependency array,
-      //         which would cause this effect to re-run on every search-param change (including the one we trigger below).
+      // - Note: The functional update form of `setSearchParams` is used intentionally here to avoid
+      //         adding `searchParams` to the dependency array, which would cause this effect to re-run
+      //         on every search-param change (including the one we trigger below).
       setSearchParams((prev) => {
         prev.set('t', String(Date.now()));
         return prev;
@@ -121,34 +179,38 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
   }, [submitEntriesState, toggleNotification, translate]);
 
   /**
-   * The callback for the drag-end event.
-   *
-   * - See also: https://docs.dndkit.com/presets/sortable
+   * Reorders `sortableList` by moving the dragged item from its old position to its new position.
    *
    * - Note: We wrap the function in `useCallback` to ensure a stable function identity across renders.
    *         This prevents unnecessary re-renders or effect re-executions in components that depend on this function.
    */
-  const handleDragEnd: DragEndEvent = useCallback(
-    (activeID: UniqueIdentifier, overID: UniqueIdentifier) => {
-      setResolvedEntries((resolvedEntries) => {
-        if (resolvedEntries.length === 0) {
-          console.error('Received a drag end event, but the list of entries is empty.');
-          return resolvedEntries;
-        }
+  const handleDragEnd: DragEndEvent = useCallback((oldIndex, newIndex) => {
+    setSortableList((sortableList) => {
+      if (oldIndex === newIndex) {
+        return sortableList;
+      }
 
-        const oldIndex = resolvedEntries.findIndex((entry) => entry.documentId === activeID);
-        const newIndex = resolvedEntries.findIndex((entry) => entry.documentId === overID);
+      const isValidOldIndex = oldIndex >= 0 && oldIndex < sortableList.length;
+      const isValidNewIndex = newIndex >= 0 && newIndex < sortableList.length;
 
-        if (oldIndex === -1 || newIndex === -1) {
-          console.error('Failed to find the dragged item in the list of entries.');
-          return resolvedEntries;
-        }
+      if (!isValidOldIndex || !isValidNewIndex) {
+        console.error('Drag-end indices are out of bounds.', {
+          oldIndex,
+          newIndex,
+          length: sortableList.length,
+        });
 
-        return arrayMove(resolvedEntries, oldIndex, newIndex);
-      });
-    },
-    []
-  );
+        return sortableList;
+      }
+
+      // Move the dragged item to its new position.
+      // https://dndkit.com/concepts/sortable/#single-list
+      const newItems = [...sortableList];
+      const [removed] = newItems.splice(oldIndex, 1);
+      newItems.splice(newIndex, 0, removed);
+      return newItems;
+    });
+  }, []);
 
   /**
    * The callback for the submit event.
@@ -157,26 +219,18 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
    *         This prevents unnecessary re-renders or effect re-executions in components that depend on this function.
    */
   const handleSubmit = useCallback(() => {
-    const sortedDocumentIds = resolvedEntries.map((entry) => entry.documentId);
+    const sortedDocumentIds = sortableList.map((item) => item.id);
     submitEntries(sortedDocumentIds);
-  }, [resolvedEntries, submitEntries]);
+  }, [sortableList, submitEntries]);
 
-  // Override the fetch state's data with `resolvedEntries` so that drag-and-drop reordering is immediately reflected in the UI.
-  // `fetchEntriesState.data` is immutable after fetching, while `resolvedEntries` tracks the user's in-progress edits.
-  //
-  // - Note: We wrap the value in `useMemo` to avoid creating a new object on every render,
-  //         which would cause `<SortModalBody />` to always receive a new reference.
-  const displayFetchState: FetchEntriesState = useMemo(
-    () =>
-      fetchEntriesState.status === AsyncStatus.Success
-        ? { status: AsyncStatus.Success, data: resolvedEntries }
-        : fetchEntriesState,
-    [fetchEntriesState, resolvedEntries]
-  );
+  // We explicitly derive `isEmpty` from `fetchEntriesState.data` instead of checking `sortableList.length === 0` to avoid a one-render flash:
+  // `sortableList` is populated in a `useEffect` (which runs after paint), so on the first render after a successful fetch it is still an empty list,
+  // which would briefly show the empty state or disable the submit button.
+  const isSuccessfullyFetched = fetchEntriesState.status === AsyncStatus.Success;
+  const isEmpty = isSuccessfullyFetched && fetchEntriesState.data.length === 0;
 
   const isSubmitting = submitEntriesState.status === AsyncStatus.InProgress;
-  const isFetching = fetchEntriesState.status === AsyncStatus.InProgress;
-  const isSubmitButtonDisabled = isSubmitting || isFetching || resolvedEntries.length === 0;
+  const isSubmitButtonDisabled = !isSuccessfullyFetched || isEmpty || isSubmitting;
 
   return (
     <Modal.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -185,16 +239,19 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
           <Drag />
         </IconButton>
       </Modal.Trigger>
-      <Modal.Content>
+      {/* Prevent focus from returning to the trigger button on close, which would cause its tooltip to appear. */}
+      <Modal.Content onCloseAutoFocus={(e: Event) => e.preventDefault()}>
         <Modal.Header>
           <Modal.Title>{translate('title')}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <SortModalBody
-            fetchEntriesState={displayFetchState}
-            mainField={mainField}
-            handleDragEnd={handleDragEnd}
-            disabled={isSubmitting}
+            heading={mainField}
+            fetchStatus={fetchEntriesState.status}
+            isEmpty={isEmpty}
+            sortableList={sortableList}
+            onDragEnd={handleDragEnd}
+            isSubmitting={isSubmitting}
           />
         </Modal.Body>
         <Modal.Footer>
@@ -202,7 +259,7 @@ const SortModal = ({ uid, mainField }: { uid: UID.ContentType; mainField: string
             <Button variant="tertiary">{translate('cancel-button.title')}</Button>
           </Modal.Close>
           <Button
-            type="submit"
+            type="button"
             onClick={handleSubmit}
             disabled={isSubmitButtonDisabled}
             loading={isSubmitting}
