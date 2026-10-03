@@ -1,6 +1,6 @@
 # Strapi Plugin: Sortable Entries
 
-<img src="./assets/example.gif" alt="Example" />
+![Strapi Plugin: Sortable Entries](./assets/header-image.gif)
 
 A Strapi plugin that enables drag-and-drop sorting of entries within a collection type.
 
@@ -68,4 +68,4 @@ GET http://localhost:1337/api/products?sort=sortOrder
 
 Below are screenshots from an example application using this plugin to sort products.
 
-<a href="./assets/content-type-builder.png"/><img src="./assets/content-type-builder-thumb.png" alt="Add a sort order field to the content-type." /></a>&nbsp;&nbsp;<a href="./assets/content-manager-configure-the-view.png"/><img src="./assets/content-manager-configure-the-view-thumb.png" alt="Select the order field as the default sort attribute." /></a>&nbsp;&nbsp;<a href="./assets/content-manager-list-view.png"/><img src="./assets/content-manager-list-view-thumb.png" alt="List view, sorted by the sort order field." /></a>&nbsp;&nbsp;<a href="./assets/content-manager-list-view-sort-entries.png"/><img src="./assets/content-manager-list-view-sort-entries-thumb.png" alt="Sort entries modal." /></a>
+<a href="./assets/screenshots/content-type-builder.png"/><img src="./assets/screenshots/content-type-builder-thumb.png" alt="Add a sort order field to the content-type." /></a>&nbsp;&nbsp;<a href="./assets/screenshots/content-manager-configure-the-view.png"/><img src="./assets/screenshots/content-manager-configure-the-view-thumb.png" alt="Select the order field as the default sort attribute." /></a>&nbsp;&nbsp;<a href="./assets/screenshots/content-manager-list-view.png"/><img src="./assets/screenshots/content-manager-list-view-thumb.png" alt="List view, sorted by the sort order field." /></a>&nbsp;&nbsp;<a href="./assets/screenshots/content-manager-list-view-sort-entries.png"/><img src="./assets/screenshots/content-manager-list-view-sort-entries-thumb.png" alt="Sort entries modal." /></a>
