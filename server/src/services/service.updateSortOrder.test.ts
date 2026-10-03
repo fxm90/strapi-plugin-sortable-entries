@@ -7,6 +7,20 @@ import service from './service';
 
 import type { Core, Schema } from '@strapi/strapi';
 import type { AnyDocument, ContentTypeUID, DocumentIDList, Filters, Locale } from '../types';
+import type { extractPublicationStatusFilter } from '../utils/extractPublicationStatusFilter';
+
+//
+// Mock "extractPublicationStatusFilter"
+//
+
+let stubbedExtractPublicationStatusFilterResult: ReturnType<typeof extractPublicationStatusFilter>;
+const mockExtractPublicationStatusFilter = vi.hoisted(() =>
+  vi.fn(() => stubbedExtractPublicationStatusFilterResult)
+);
+
+vi.mock('../utils/extractPublicationStatusFilter', () => ({
+  extractPublicationStatusFilter: mockExtractPublicationStatusFilter,
+}));
 
 //
 // Mock "hasFieldOfType"
@@ -122,6 +136,11 @@ const mockStrapi = {
 
 describe(`test method "updateSortOrder()"`, () => {
   beforeEach(() => {
+    stubbedExtractPublicationStatusFilterResult = {
+      filters: { field: 'extracted-value' },
+      status: 'published',
+      publicationFilter: 'modified',
+    };
     stubbedHasFieldOfTypeResult = true;
     stubbedIsEqualSetsResult = true;
     stubbedGetModelResult = createModel();
@@ -336,9 +355,47 @@ describe(`test method "updateSortOrder()"`, () => {
     expect(mockFindMany).toHaveBeenNthCalledWith(2, {
       fields: ['sortOrder'],
       sort: 'sortOrder:asc',
-      filters,
+      ...stubbedExtractPublicationStatusFilterResult,
       locale: stubbedResolveEffectiveLocaleResult,
     });
+  });
+
+  it('should invoke `extractPublicationStatusFilter()` with correct parameters when a filter is defined.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const sortedDocumentIds: DocumentIDList = ['doc-4', 'doc-3', 'doc-2'];
+    const filters: Filters = { field: 'value' };
+    const locale: Locale = 'de';
+
+    // When
+    await service({ strapi: mockStrapi }).updateSortOrder({
+      uid,
+      sortedDocumentIds,
+      filters,
+      locale,
+    });
+
+    // Then
+    expect(mockExtractPublicationStatusFilter).toHaveBeenCalledWith(filters);
+  });
+
+  it('should not invoke `extractPublicationStatusFilter()` when filter is undefined.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const sortedDocumentIds: DocumentIDList = ['doc-5', 'doc-4', 'doc-3', 'doc-2', 'doc-1'];
+    const filters: Filters = undefined;
+    const locale: Locale = 'de';
+
+    // When
+    await service({ strapi: mockStrapi }).updateSortOrder({
+      uid,
+      sortedDocumentIds,
+      filters,
+      locale,
+    });
+
+    // Then
+    expect(mockExtractPublicationStatusFilter).not.toHaveBeenCalled();
   });
 
   it('should invoke `isEqualSets()` with previous and next document ID sets when filter is defined.', async () => {

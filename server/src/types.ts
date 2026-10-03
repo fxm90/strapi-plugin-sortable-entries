@@ -15,3 +15,7 @@ export type AnyDocument = Modules.Documents.AnyDocument;
 
 export type Filters = Modules.Documents.Params.Filters.Any<ContentTypeUID>;
 export type Locale = Modules.Documents.Params.Locale.StringNotation;
+
+export type PublicationStatus = Modules.Documents.Params.PublicationStatus.Kind;
+export type PublicationFilterMode =
+  Modules.Documents.Params.PublicationStatus.PublicationFilterMode;
