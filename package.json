@@ -13,6 +13,14 @@
     "sort"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/fxm90/strapi-plugin-sortable-entries#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fxm90/strapi-plugin-sortable-entries.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fxm90/strapi-plugin-sortable-entries/issues"
+  },
   "author": "Felix M. <me@felix.hamburg>",
   "type": "commonjs",
   "exports": {
