@@ -1,4 +1,5 @@
 import { config } from '../config';
+import { extractPublicationStatusFilter } from '../utils/extractPublicationStatusFilter';
 import { hasFieldOfType } from '../utils/hasFieldOfType';
 import { isEqualSets } from '../utils/isEqualSets';
 import { rawDocumentWriter } from '../utils/rawDocumentWriter';
@@ -64,11 +65,19 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     const contentTypeConfig = await contentTypeService.findConfiguration(model);
     const mainField = contentTypeConfig.settings?.mainField;
 
+    const {
+      filters: filtersWithoutStatus,
+      status,
+      publicationFilter,
+    } = extractPublicationStatusFilter(filters);
+
     const effectiveLocale = await resolveEffectiveLocale({ strapi, model, locale });
     const result = await strapi.documents(uid).findMany({
       fields: mainField ? [mainField] : [],
       sort: `${sortOrderFieldName}:asc`,
-      filters,
+      filters: filtersWithoutStatus,
+      status,
+      publicationFilter,
       locale: effectiveLocale,
     });
 
@@ -166,10 +175,18 @@ const service = ({ strapi }: { strapi: Core.Strapi }) => ({
     if (filters) {
       // Re-fetch the currently visible subset and reject stale modal submissions before merging them back into the full list.
       // Without this check, a stale filtered modal could silently reshuffle hidden entries.
+      const {
+        filters: filtersWithoutStatus,
+        status,
+        publicationFilter,
+      } = extractPublicationStatusFilter(filters);
+
       const filteredEntries = await strapi.documents(uid).findMany({
         fields: [sortOrderFieldName],
         sort: `${sortOrderFieldName}:asc`,
-        filters,
+        filters: filtersWithoutStatus,
+        status,
+        publicationFilter,
         locale: effectiveLocale,
       });
 

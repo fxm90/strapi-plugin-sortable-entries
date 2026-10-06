@@ -7,6 +7,20 @@ import service from './service';
 
 import type { Core, Schema } from '@strapi/strapi';
 import type { AnyDocument, ContentTypeUID, Filters, Locale } from '../types';
+import type { extractPublicationStatusFilter } from '../utils/extractPublicationStatusFilter';
+
+//
+// Mock "extractPublicationStatusFilter"
+//
+
+let stubbedExtractPublicationStatusFilterResult: ReturnType<typeof extractPublicationStatusFilter>;
+const mockExtractPublicationStatusFilter = vi.hoisted(() =>
+  vi.fn(() => stubbedExtractPublicationStatusFilterResult)
+);
+
+vi.mock('../utils/extractPublicationStatusFilter', () => ({
+  extractPublicationStatusFilter: mockExtractPublicationStatusFilter,
+}));
 
 //
 // Mock "hasFieldOfType"
@@ -81,6 +95,11 @@ const mockStrapi = {
 
 describe(`test method "fetchEntries()"`, () => {
   beforeEach(() => {
+    stubbedExtractPublicationStatusFilterResult = {
+      filters: { field: 'extracted-value' },
+      status: 'published',
+      publicationFilter: 'modified',
+    };
     stubbedHasFieldOfTypeResult = true;
     stubbedGetModelResult = createModel();
     stubbedResolveEffectiveLocaleResult = 'en';
@@ -206,6 +225,23 @@ describe(`test method "fetchEntries()"`, () => {
     });
   });
 
+  it('should invoke `extractPublicationStatusFilter()` with correct parameters.', async () => {
+    // Given
+    const uid: ContentTypeUID = 'api::test.test';
+    const filters: Filters = { field: 'value' };
+    const locale: Locale = 'de';
+
+    // When
+    await service({ strapi: mockStrapi }).fetchEntries({
+      uid,
+      filters,
+      locale,
+    });
+
+    // Then
+    expect(mockExtractPublicationStatusFilter).toHaveBeenCalledWith(filters);
+  });
+
   it('should invoke `strapi.documents(uid).findMany()` with correct parameters.', async () => {
     // Given
     const mainField = 'foo-bar';
@@ -226,7 +262,7 @@ describe(`test method "fetchEntries()"`, () => {
     expect(mockFindMany).toHaveBeenCalledWith({
       fields: [mainField],
       sort: 'sortOrder:asc',
-      filters,
+      ...stubbedExtractPublicationStatusFilterResult,
       locale: stubbedResolveEffectiveLocaleResult,
     });
   });
@@ -248,7 +284,7 @@ describe(`test method "fetchEntries()"`, () => {
     expect(mockFindMany).toHaveBeenCalledWith({
       fields: [],
       sort: 'sortOrder:asc',
-      filters,
+      ...stubbedExtractPublicationStatusFilterResult,
       locale: stubbedResolveEffectiveLocaleResult,
     });
   });
