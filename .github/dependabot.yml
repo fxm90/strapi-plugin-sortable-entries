@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # GitHub Actions
+  # Keeps the actions used in the workflows up to date.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # npm
+  # Security updates only (enabled in Settings → Code security), grouped into a single PR.
+  # `open-pull-requests-limit: 0` disables regular version updates.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 0
+    # Strapi v5 requires React Router v6.
+    ignore:
+      - dependency-name: 'react-router'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-router-dom'
+        update-types: ['version-update:semver-major']
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
