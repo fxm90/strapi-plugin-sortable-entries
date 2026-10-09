@@ -19,6 +19,12 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 0
+    # Strapi v5 requires React Router v6.
+    ignore:
+      - dependency-name: 'react-router'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-router-dom'
+        update-types: ['version-update:semver-major']
     groups:
       npm-security:
         applies-to: security-updates
