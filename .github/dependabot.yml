@@ -1,0 +1,26 @@
+version: 2
+updates:
+  # GitHub Actions
+  # Keeps the actions used in the workflows up to date.
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+
+  # npm
+  # Security updates only (enabled in Settings → Code security), grouped into a single PR.
+  # `open-pull-requests-limit: 0` disables regular version updates.
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 0
+    groups:
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - '*'
